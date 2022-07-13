@@ -36,6 +36,7 @@ function h(type, props, ...children) {
 const html = htm.bind(h)
 
 function render(component, element) {
+    console.log('called')
     element.innerHTML = ''
     element.appendChild(component().toDOMElement())
 }
@@ -46,16 +47,11 @@ function createUseState(state, markDirty) {
         state[stateName] ??= initialValue;
 
         function setState(newValue) {
-            if (typeof newValue === 'function') {
-                if (state[stateName] !== newValue(state[stateName])) {
-                    state[stateName] = newValue(state[stateName])
-                    markDirty()
-                }
-            } else {
-                if (state[stateName] !== newValue) {
-                    state[stateName] = newValue
-                    markDirty()
-                }
+            if (typeof newValue === 'function')
+                newValue = newValue(state[stateName])
+            if (state[stateName] !== newValue) {
+                state[stateName] = newValue
+                markDirty()
             }
         }
 
@@ -96,7 +92,7 @@ function createComponent(render) {
 }
 
 const Test = createComponent(({useState, useEffect, props}) => {
-    const [count, setCount] = useState('count', 0);
+    const [count, setCount] = useState('count', props.count);
 
     function increaseCount() {
         setCount(count => {
@@ -108,12 +104,20 @@ const Test = createComponent(({useState, useEffect, props}) => {
         console.log('inner count updated', count)
     }, [count])
 
+    useEffect('countPropUpdated', () => {
+        // TODO: cause bug that render everything twice
+        setCount(props.count)
+    }, [props.count])
+
     return html`
         <div>
+            Begin Test component ------ <br/>
+            ${props.children[1]}<br/>
             Props: ${props.hihi}<br/>
             Outer: ${props.count}<br/>
             Inner: ${count}<br/>
-            <button onclick=${increaseCount}>Increase inner</button>
+            <button onclick=${increaseCount}>Increase inner</button><br/>
+            ${props.children[0]}
         </div>
     `
 })
@@ -147,7 +151,8 @@ const App = createComponent(({useState, useEffect}, props) => {
             <a href="/">${count}</a><br/>
             <button onclick=${increaseCount} ahihi="ahoho">Increase outer</button><br/>
             <${Test} count=${count} hihi="hihi laksjdhfakl">
-                <span>children prop (not yet supported)</span>
+                <span>children prop 1</span>
+                <span>children prop 2</span>
             <//>
         </div>
     `
