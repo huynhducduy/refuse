@@ -2,6 +2,7 @@
 
 This is a work-in-progress, naive, hobby implementation of the React.js framework.
 
+![ezgif-5-ffd434224c](https://user-images.githubusercontent.com/12293622/178789425-b6115cb7-39b0-43a2-afa7-2fd0acef0ded.gif)
 
 Todo:
 - [x] Jsx to HyperScript using Htm
