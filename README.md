@@ -17,6 +17,7 @@ Todo:
 - [ ] Component Tree, Reconciliation algorithm (dirty mark, keys, compare,...)
 - [ ] Automatic update batching
 - [ ] Defer effects
+- [ ] Write tests
 - [ ] Fiber
 - [ ] Ref
 - [ ] Portal
