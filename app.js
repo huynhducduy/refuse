@@ -36,9 +36,22 @@ function h(type, props, ...children) {
 const html = htm.bind(h)
 
 function render(component, element) {
-    console.log('called')
-    element.innerHTML = ''
-    element.appendChild(component().toDOMElement())
+    // Inner state is stale somehow
+    // const newElement = component().toDOMElement()
+    // element.innerHTML = ''
+    // element.appendChild(newElement)
+    // Okay
+    // console.log(component()) // Cmt this line and it renders twice
+    // element.innerHTML = ''
+    // element.appendChild(component().toDOMElement())
+    // Solution
+    requestAnimationFrame(() => {
+        element.innerHTML = ''
+        element.appendChild(component().toDOMElement())
+    });
+    // The problem cause because there are multiple render signal called, and they are nested, so that the first signal called is what really make the output
+    // render 1 -> call render 2 (by .toDOMElement method) -> apply render 2 -> apply render 1 -> crash things
+    // requestAnimationFrame make sure thing are rendered in the right order, but we need to implement batch update, defer effect as well
 }
 
 
@@ -101,13 +114,21 @@ const Test = createComponent(({useState, useEffect, props}) => {
     }
 
     useEffect('countUpdated', () => {
-        console.log('inner count updated', count)
+        console.log('Inner count updated', count)
     }, [count])
 
     useEffect('countPropUpdated', () => {
-        // TODO: cause bug that render everything twice
         setCount(props.count)
     }, [props.count])
+
+    useEffect('testCount', () =>{
+        const id = setInterval(function log() {
+            console.log(`Inner count is: ${count}`);
+        }, 2000);
+        return function() {
+            clearInterval(id);
+        }
+    }, [count]);
 
     return html`
         <div>
@@ -122,7 +143,7 @@ const Test = createComponent(({useState, useEffect, props}) => {
     `
 })
 
-const App = createComponent(({useState, useEffect}, props) => {
+const App = createComponent(({useState, useEffect}) => {
 
     const [count, setCount] = useState('count', 0);
 
@@ -133,18 +154,17 @@ const App = createComponent(({useState, useEffect}, props) => {
     }
 
     useEffect('countUpdated', () => {
-        console.log('outer count updated', count)
+        console.log('Outer count updated', count)
     }, [count])
 
     useEffect('testCount', () =>{
         const id = setInterval(function log() {
-            console.log(`Count is: ${count}`);
+            console.log(`Outer count is: ${count}`);
         }, 2000);
         return function() {
             clearInterval(id);
         }
     }, [count]);
-
 
     return html`
         <div>
