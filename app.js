@@ -68,9 +68,11 @@ function createUseState(state, markDirty) {
 
 function createUseEffect(effects) {
     return function(effectName, effect, effectCond) {
-        if (effects[effectName] !== JSON.stringify(effectCond)) {
-            effects[effectName] = JSON.stringify(effectCond)
-            effect()
+        if (!effects[effectName]) effects[effectName] = {}
+        if (effects[effectName].cond !== JSON.stringify(effectCond)) {
+            effects[effectName].cond = JSON.stringify(effectCond)
+            effects[effectName].cleanup?.()
+            effects[effectName].cleanup = effect()
         }
     }
 }
@@ -129,6 +131,16 @@ const App = createComponent(({useState, useEffect}, props) => {
     useEffect('countUpdated', () => {
         console.log('outer count updated', count)
     }, [count])
+
+    useEffect('testCount', () =>{
+        const id = setInterval(function log() {
+            console.log(`Count is: ${count}`);
+        }, 2000);
+        return function() {
+            clearInterval(id);
+        }
+    }, [count]);
+
 
     return html`
         <div>
