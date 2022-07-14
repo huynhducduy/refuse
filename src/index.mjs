@@ -2,49 +2,76 @@ import htm from '../node_modules/htm/dist/htm.mjs';
 
 let rootElement, rootFiber, currentFiber;
 
-function Fiber({component, child, state, props}) {
+function Fiber({component}, isRoot) {
+    this.isRoot = isRoot
     this.symbol = Symbol(component.name)
     this.component = component
-    this.props = props
-    this.child = child || []
+    this.props = {}
+    this.child = []
     this.childIndex = 0
     this.isDirty = true
     this.state = []
     this.stateIndex = 0
     this.effects = []
     this.effectIndex = 0
+    this.htmProps = {}
+    this.htmChild = []
 }
 
-function h(type, props, ...child) {
-    this[0] = 3 // Disable caching
+function h(type, htmProps, ...htmChild) {
+    if (this?.[0]) this[0] = 3 // Disable caching
 
     if (typeof type === 'function') { // if it's a custom component
-        // TODO: Compare old fiber with new fiber (compare prop, type,...)
-        let thisFiber = currentFiber.child[currentFiber.childIndex] ?? new Fiber({ component: type })
+        const parentFiber = currentFiber // Saved for later use
 
-        const lastParentFiber = currentFiber // Saved for later
+        if (!currentFiber.child[currentFiber.childIndex]) { // Initialize the child If the child is not initialized
+            currentFiber.child[currentFiber.childIndex] ??= new Fiber({
+                component: type
+            })
+        }
 
-        currentFiber.child[currentFiber.childIndex++] = thisFiber
-        currentFiber = thisFiber
-        const r = type({...props, child}) // process child of thisFiber
+        const thisFiber = currentFiber.child[currentFiber.childIndex++]
+        // Update the attributes of the fiber
+        thisFiber.props = {...htmProps, child: htmChild}
+        thisFiber.htmProps = htmProps
+        thisFiber.htmChild = htmChild
 
-        currentFiber = lastParentFiber // Restore parent fiber to process siblings of thisFiber
-        return r
+        currentFiber = thisFiber // make it the parent of it's child
+
+        if (!parentFiber.isRoot && parentFiber.isDirty)
+            thisFiber.isDirty = true
+
+        let result;
+        console.log('checking', thisFiber.symbol)
+        if (thisFiber.isDirty) {
+            console.log('result: dirty')
+            result = type(thisFiber.props) // process child of thisFiber
+            thisFiber.isDirty = false
+        } else {
+            console.log('result: not dirty')
+            console.log('starting process child')
+            result = type(thisFiber.props) // process child of thisFiber
+            // TODO: find method to process child without running it again
+        }
+        currentFiber = parentFiber // Restore parent fiber to process siblings of thisFiber
+        return result
     }
     return {
-        toDOMElement: function() {
-
+        type,
+        htmProps,
+        htmChild,
+        toDOMElement: () => {
             const element = document.createElement(type) // create element of type 'type'
 
-            for (let key in props) {
-                if (typeof props[key] !== "function") {
-                    element.setAttribute(key, props[key]) // add attributes to element
+            for (let key in htmProps) {
+                if (typeof htmProps[key] !== "function") {
+                    element.setAttribute(key, htmProps[key]) // add attributes to element
                 } else {
-                    element.addEventListener(key.slice(2), props[key]) // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
+                    element.addEventListener(key.slice(2), htmProps[key]) // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
                 }
             }
 
-            child.forEach(child => {
+            htmChild.forEach(child => {
                 if (typeof child !== "object") {
                     element.innerHTML += child // add text to element
                 } else {
@@ -59,15 +86,14 @@ function h(type, props, ...child) {
 
 export const html = htm.bind(h)
 
-function resetFiberIndexes(fiber) {
+function resetFiber(fiber) {
     fiber.childIndex = 0
     fiber.stateIndex = 0
     fiber.effectIndex = 0
 
-    fiber.child.forEach(child => resetFiberIndexes(child))
+    fiber.child.forEach(child => resetFiber(child, fiber.isDirty))
 }
 function runningEffects(fiber) {
-
     fiber.child.forEach(child => runningEffects(child))
 
     for (let i = 0; i < fiber.effects.length; i++) {
@@ -81,10 +107,14 @@ function runningEffects(fiber) {
 
 export function render(component, element) {
     if (element) rootElement ??= element;
-    if (component) rootFiber ??= new Fiber({component})
+    if (component) rootFiber ??= new Fiber({
+        component: () => html`<${component}/>`,
+    }, true)
+
+    console.log('schedule render')
 
     currentFiber = rootFiber;
-    resetFiberIndexes(rootFiber)
+    resetFiber(rootFiber)
 
     // requestAnimationFrame(() => {
     rootElement.innerHTML = ''
@@ -101,6 +131,7 @@ export function useState(initialValue) {
     thisFiber.state[thisIndex] ??= initialValue
 
     function setState(newState) {
+
         if (typeof newState === 'function') {
             newState = newState(thisFiber.state[thisIndex])
         }

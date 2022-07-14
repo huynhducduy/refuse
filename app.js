@@ -5,6 +5,9 @@ function Test2() {
 }
 
 function Test(props) {
+
+    console.log('Test called')
+
     const [count, setCount] = useState(props.count);
 
     function increaseCount() {
@@ -31,7 +34,7 @@ function Test(props) {
     }, [count]);
 
     return html`
-        <div>
+        <div style="border: 5px solid red">
             ${props.text}<br/>
             <a>${count}</a><br/>
             <button onclick=${increaseCount}>Increase inner</button><br/>
@@ -41,6 +44,9 @@ function Test(props) {
 }
 
 function App() {
+
+    console.log('App called')
+
     const [count, setCount] = useState(100);
     const [count2, setCount2] = useState(100);
 
@@ -62,7 +68,7 @@ function App() {
 
     useEffect(() =>{
         const id = setInterval(function log() {
-            console.log(`Outer count is: ${count}`);
+            // console.log(`Outer count is: ${count}`);
         }, 2000);
         return function() {
             clearInterval(id);
@@ -70,13 +76,13 @@ function App() {
     }, [count]);
 
     return html`
-        <div>
+        <div  style="border: 5px solid blue">
             <a>${count}</a><br/>
             <a>${count2}</a><br/>
             <button onclick=${increaseCount}>Increase outer</button><br/>
             <button onclick=${increaseCount2}>Increase outer 2</button><br/>
+            <${count > 300 && Test} count=${count} text="Test component 2"/>
             <${Test} count=${count} text="Test component 1"/>
-            <${Test} count=${count} text="Test component 2"/>
         </div>
     `
 }
