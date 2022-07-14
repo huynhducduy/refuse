@@ -16,7 +16,7 @@ Todo:
 - [ ] Rewrite codebase in Typescript
 - [ ] Component Tree, Reconciliation algorithm (dirty mark, keys, compare,...)
 - [ ] Automatic update batching
-- [ ] Defer effects
+- [X] Defer effects
 - [ ] Write tests
 - [ ] Fiber
 - [ ] Ref
