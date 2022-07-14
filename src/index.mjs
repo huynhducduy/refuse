@@ -1,6 +1,7 @@
 import htm from '../node_modules/htm/dist/htm.mjs';
 
 let rootElement, rootFiber, currentFiber;
+let batchUpdate = []
 
 function Fiber({component}, isRoot) {
     this.isRoot = isRoot
@@ -111,7 +112,11 @@ export function render(component, element) {
         component: () => html`<${component}/>`,
     }, true)
 
-    console.log('schedule render')
+    while (batchUpdate.length) {
+        batchUpdate.pop()()
+    }
+
+    console.log('@@@ render')
 
     currentFiber = rootFiber;
     resetFiber(rootFiber)
@@ -131,16 +136,18 @@ export function useState(initialValue) {
     thisFiber.state[thisIndex] ??= initialValue
 
     function setState(newState) {
+        if (!batchUpdate.length) setTimeout(render, 0)
 
-        if (typeof newState === 'function') {
-            newState = newState(thisFiber.state[thisIndex])
-        }
+        batchUpdate.push(function() {
+            if (typeof newState === 'function') {
+                newState = newState(thisFiber.state[thisIndex])
+            }
 
-        if (thisFiber.state[thisIndex] !== newState) {
-            thisFiber.state[thisIndex] = newState
-            thisFiber.isDirty = true
-            render()
-        }
+            if (thisFiber.state[thisIndex] !== newState) {
+                thisFiber.state[thisIndex] = newState
+                thisFiber.isDirty = true
+            }
+        })
     }
     return [thisFiber.state[thisIndex], setState]
 }

@@ -15,10 +15,10 @@ Todo:
 - [ ] memo
 - [ ] Rewrite codebase in Typescript
 - [ ] Component Tree, Reconciliation algorithm (dirty mark, keys, compare,...)
-- [ ] Automatic update batching
+- [X] Automatic update batching
 - [X] Defer effects
 - [ ] Write tests
-- [ ] Fiber
+- [X] Fiber
 - [ ] Ref
 - [ ] Portal
 - [ ] Context

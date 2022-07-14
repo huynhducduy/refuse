@@ -62,6 +62,18 @@ function App() {
         })
     }
 
+    function increaseCount3() {
+        setCount(count => {
+            return count+50
+        })
+        setCount(count => {
+            return count+50
+        })
+        setCount2(count => {
+            return count+100
+        })
+    }
+
     useEffect(() => {
         console.log('Outer count updated', count)
     }, [count])
@@ -81,6 +93,7 @@ function App() {
             <a>${count2}</a><br/>
             <button onclick=${increaseCount}>Increase outer</button><br/>
             <button onclick=${increaseCount2}>Increase outer 2</button><br/>
+            <button onclick=${increaseCount3}>Increase both outer</button><br/>
             <${count > 300 && Test} count=${count} text="Test component 2"/>
             <${Test} count=${count} text="Test component 1"/>
         </div>
