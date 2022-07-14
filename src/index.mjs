@@ -1,24 +1,37 @@
 import htm from '../node_modules/htm/dist/htm.mjs';
 
-const componentTree = {}
+let rootElement, rootFiber, currentFiber;
+
+function Fiber({component, children, state, props}) {
+    this.symbol = Symbol(component.name)
+    this.component = component
+    this.props == props
+    this.children = children || []
+    this.childIndex = 0
+    this.isDirty = true
+    this.state = []
+    this.stateIndex = 0
+}
 
 function h(type, props, ...children) {
     this[0] = 3 // Disable caching
+
     if (typeof type === 'function') { // if it's a custom component
-        if (type.isDirty) { // if the parent component is dirty, then all of its children is dirty
-            children = children.map(child => {
-                if (typeof child === 'function') {
-                    child.isDirty = true
-                }
-                return child
-            })
-        }
-        return type({...props, children})
+        // Compare old fiber with new fiber (compare prop, type,...)
+        let thisFiber = currentFiber.children[currentFiber.childIndex] ?? new Fiber({ component: type })
+        thisFiber.stateIndex = 0
+        thisFiber.childIndex = 0
+
+        const lastParentFiber = currentFiber // Saved for later
+
+        currentFiber.children[currentFiber.childIndex++] = thisFiber
+        currentFiber = thisFiber
+        const r = type({...props, children}) // process children of thisFiber
+
+        currentFiber = lastParentFiber // Restore parent fiber
+        return r
     }
     return {
-        type,
-        props,
-        children,
         toDOMElement: function() {
 
             const element = document.createElement(type) // create element of type 'type'
@@ -46,12 +59,15 @@ function h(type, props, ...children) {
 
 export const html = htm.bind(h)
 
-let rootElement, rootComponent, prevRootComponent;
 export function render(component, element) {
-    prevRootComponent = rootComponent
-    rootComponent ??= component;
-    rootElement ??= element;
-    console.log('schedule render');
+    if (element) rootElement ??= element;
+    if (component) rootFiber ??= new Fiber({ component })
+
+    currentFiber = rootFiber;
+    currentFiber.childIndex = 0;
+    currentFiber.stateIndex = 0;
+    // End
+
     // Inner state is stale somehow
     // const newElement = component().toDOMElement()
     // element.innerHTML = ''
@@ -62,9 +78,8 @@ export function render(component, element) {
     // element.appendChild(component().toDOMElement())
     // Solution
     requestAnimationFrame(() => {
-        const toRender = rootComponent().toDOMElement()
+        const toRender = rootFiber.component().toDOMElement()
         requestAnimationFrame(() => {
-            console.log('real render')
             rootElement.innerHTML = ''
             rootElement.appendChild(toRender)
         })
@@ -74,66 +89,22 @@ export function render(component, element) {
     // requestAnimationFrame make sure thing are rendered in the right order, but we need to implement batch update, defer effect as well
 }
 
-function createUseState(state, markDirty) {
-    return function(stateName, initialValue) {
-        state[stateName] ??= initialValue;
+export function useState(initialValue) {
+    const thisFiber = currentFiber
+    const thisIndex = currentFiber.stateIndex++
 
-        function setState(newValue) {
-            if (typeof newValue === 'function')
-                newValue = newValue(state[stateName])
-            if (state[stateName] !== newValue) {
-                state[stateName] = newValue
-                markDirty()
-            }
+    thisFiber.state[thisIndex] = thisFiber.state[thisIndex] ?? initialValue
+
+    function setState(newState) {
+        if (typeof newState === 'function') {
+            newState = newState(thisFiber.state[thisIndex])
         }
 
-        return [
-            state[stateName],
-            setState
-        ]
-    }
-}
-
-function createUseEffect(effects) {
-    return function(effectName, effect, effectCond) {
-        if (!effects[effectName]) effects[effectName] = {}
-        if (effects[effectName].cond !== JSON.stringify(effectCond)) {
-            effects[effectName].cond = JSON.stringify(effectCond)
-            effects[effectName].cleanup?.()
-            effects[effectName].cleanup = effect()
+        if (thisFiber.state[thisIndex] !== newState) {
+            thisFiber.state[thisIndex] = newState
+            thisFiber.isDirty = true
+            render()
         }
     }
-}
-
-export function createComponent(hx) {
-
-    // Make the component as dirty in the component tree if there are some state change
-    function markDirty() {
-        // TODO: to be updated: reconciliation algorithm
-        isDirty = true
-        render()
-    }
-
-    const state = {}
-    const effects = {}
-    const useState = createUseState(state, markDirty)
-    const useEffect = createUseEffect(effects)
-
-    let isDirty = true
-    let prev;
-
-    const evaluate = function (props) {
-        if (isDirty) {
-            prev = hx({useState, useEffect, props})
-        }
-        isDirty = false
-        return prev
-    }
-
-    evaluate.isDirty = isDirty
-    evaluate.state = state
-    evaluate.effects = effects
-    evaluate.prev = prev
-
-    return evaluate
+    return [thisFiber.state[thisIndex], setState]
 }
