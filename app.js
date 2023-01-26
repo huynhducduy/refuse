@@ -1,7 +1,9 @@
 import {useEffect, useState, html, render} from "./src/index.mjs";
 
 function Test2() {
-    return html`<div>Test2</div>`
+    return html`
+        <a>Test2</a>
+    `
 }
 
 function Test(props) {
@@ -20,18 +22,18 @@ function Test(props) {
         console.log('Inner count updated', count)
     }, [count])
 
-    useEffect(() => {
-        setCount(props.count)
-    }, [props.count])
+    // useEffect(() => {
+    //     setCount(props.count)
+    // }, [props.count])
 
-    useEffect(() =>{
-        const id = setInterval(function log() {
-            // console.log(`Inner count is: ${count}`);
-        }, 2000);
-        return function() {
-            clearInterval(id);
-        }
-    }, [count]);
+    // useEffect(() =>{
+    //     const id = setInterval(function log() {
+    //         console.log(`Inner count is: ${count}`);
+    //     }, 2000);
+    //     return function() {
+    //         clearInterval(id);
+    //     }
+    // }, [count]);
 
     return html`
         <div style="border: 5px solid red">
@@ -56,6 +58,12 @@ function App() {
         })
     }
 
+	function decreaseCount() {
+		setCount(count => {
+			return count-100
+		})
+	}
+
     function increaseCount2() {
         setCount2(count => {
             return count+100
@@ -78,24 +86,25 @@ function App() {
         console.log('Outer count updated', count)
     }, [count])
 
-    useEffect(() =>{
-        const id = setInterval(function log() {
-            // console.log(`Outer count is: ${count}`);
-        }, 2000);
-        return function() {
-            clearInterval(id);
-        }
-    }, [count]);
+    // useEffect(() =>{
+    //     const id = setInterval(function log() {
+    //         // console.log(`Outer count is: ${count}`);
+    //     }, 2000);
+    //     return function() {
+    //         clearInterval(id);
+    //     }
+    // }, [count]);
 
     return html`
-        <div  style="border: 5px solid blue">
+        <div style="border: 5px solid blue">
+            <${Test} count=${count} text="Test component 1"/>
             <a>${count}</a><br/>
             <a>${count2}</a><br/>
             <button onclick=${increaseCount}>Increase outer</button><br/>
+			<button onclick=${decreaseCount}>Decrease outer</button><br/>
             <button onclick=${increaseCount2}>Increase outer 2</button><br/>
             <button onclick=${increaseCount3}>Increase both outer</button><br/>
-            <${count > 300 && Test} count=${count} text="Test component 2"/>
-            <${Test} count=${count} text="Test component 1"/>
+            <${count > 300 && Test} count=${count2} text="Test component 2"/>
         </div>
     `
 }

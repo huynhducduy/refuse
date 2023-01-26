@@ -10,6 +10,7 @@ Todo:
 - [x] render
 - [x] Custom components with props, children
 - [x] useEffect with cleanup
+- [ ] When dismount: clear states, cleanup effects
 - [x] useState
 - [X] Automatic update batching
 - [X] Defer effects
