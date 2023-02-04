@@ -1,5 +1,7 @@
 // @ts-ignore
 import htm from '../node_modules/htm/dist/htm.mjs';
+// @ts-ignore
+import morphdom from '../node_modules/morphdom/dist/morphdom-esm.js';
 
 let rootElement: HTMLElement, rootFiber: Fiber, currentFiber: Fiber
 let batchUpdate: Function[] = []
@@ -188,8 +190,9 @@ function rerender() {
 	// https://reactjs.org/docs/reconciliation.html
 
 	// Commit phase: commit changes to real DOM
-	rootElement.innerHTML = ''
-	rootElement.appendChild(result.toDOMElement())
+	const newRootElement = rootElement.cloneNode()
+	newRootElement.appendChild(result.toDOMElement())
+	morphdom(rootElement, newRootElement)
 
 	// Layout Effects goes here and block browser paint
 	// After running all layout effects at once, if changes are made, trigger re-render again before browser paint
