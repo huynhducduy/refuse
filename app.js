@@ -20,6 +20,9 @@ function Test(props) {
 
 	useEffect(() => {
 		console.log('Inner count updated', count)
+		return () => {
+			console.log('Inner count cleanup', count)
+		}
 	}, [count])
 
 	// useEffect(() => {

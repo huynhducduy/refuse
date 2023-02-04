@@ -3,6 +3,7 @@ import htm from '../node_modules/htm/dist/htm.mjs';
 
 let rootElement: HTMLElement, rootFiber: Fiber, currentFiber: Fiber
 let batchUpdate: Function[] = []
+let unmountedComponents: Fiber[] = []
 
 interface FunctionalComponent {
 	(props: Fiber['props']): Fiber
@@ -79,14 +80,11 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 
 	// console.log("Processing: type", type, "props", props, "child", child)
 
-	if (!parentFiber.child[parentFiber.childIndex] || parentFiber.child[parentFiber.childIndex].type !== type) { // Initialize the child If the child is not initialized or not the old child
-		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child)
+	const oldChild = parentFiber.child[parentFiber.childIndex];
+	if (oldChild?.type !== type) {
+		if (oldChild) unmountedComponents.push(oldChild);
+		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child);
 	}
-
-	// if (!parentFiber.isRoot) {
-	// 	parentFiber.child[parentFiber.childIndex].props = props
-	// 	parentFiber.child[parentFiber.childIndex].child = child
-	// }
 
 	// Try to leverage data from previous render
 	thisFiber = parentFiber.child[parentFiber.childIndex++]
@@ -145,11 +143,11 @@ function resetFiber(fiber: Fiber) {
 	})
 }
 
-function runningEffects(fiber: Fiber) {
+function runEffects(fiber: Fiber) {
 	// Called in a bottom-up fashion, run children's effects first
 	fiber.child.forEach(child => {
 		if (typeof child === "object") {
-			runningEffects(child)
+			runEffects(child)
 		}
 	})
 
@@ -159,6 +157,19 @@ function runningEffects(fiber: Fiber) {
 			fiber.effects[i].cleanup = fiber.effects[i].callback()
 			fiber.effects[i].run = false
 		}
+	}
+}
+
+function cleanUpEffects(fiber: Fiber) {
+	// Called in a bottom-up fashion, run children's effects first
+	fiber.child.forEach(child => {
+		if (typeof child === "object") {
+			cleanUpEffects(child)
+		}
+	})
+
+	for (let i = 0; i < fiber.effects.length; i++) {
+		fiber.effects[i].cleanup?.()
 	}
 }
 
@@ -187,9 +198,11 @@ function rerender() {
 	// Run effects and cleanup effects of unmounted components
 	// 1: if no changes are made in layout effects: run after browser painted to the screen
 	// 2: if changes are made in layout effects: run before browser paint
-	runningEffects(rootFiber)
+	runEffects(rootFiber)
 
-	console.log(rootFiber)
+	while (unmountedComponents.length) {
+		cleanUpEffects(unmountedComponents.pop()!)
+	}
 }
 
 
