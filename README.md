@@ -6,16 +6,17 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 
 Todo:
 - [x] TypeScript
-- [x] Jsx to HyperScript using Htm
+- [x] Jsx to HyperScript using `htm`
 - [x] render
 - [x] Custom components with props, children
 - [x] useEffect with cleanup
-- [ ] When dismount: clear states, cleanup effects
+- [ ] When unmount: clear states, cleanup effects
 - [x] useState
 - [X] Automatic update batching
 - [X] Defer effects
 - [ ] useCallback, useMemo
-- [ ] Custom hooks
+- [ ] useLayoutEffect
+- [x] Custom hooks
 - [ ] memo
 - [x] Fiber, Component Tree
 - [ ] Reconciliation algorithm (dirty mark, keys, compare,...)
@@ -29,3 +30,11 @@ Todo:
 - [ ] Synthetic Event
 - [ ] Devtools, debugger, HMR - Hot reload
 - [ ] Router
+
+## Development
+```
+npm i
+tsc --watch
+```
+
+Open `index.html` in browser
