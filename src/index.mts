@@ -7,6 +7,8 @@ let rootElement: HTMLElement, rootFiber: Fiber, currentFiber: Fiber
 let batchUpdate: Function[] = []
 let unmountedComponents: Fiber[] = []
 
+const originalConsoleLog = console.log
+
 interface FunctionalComponent {
 	(props: Fiber['props']): Fiber
 }
@@ -28,11 +30,16 @@ interface Fiber {
 		run: boolean
 	}[]
 	effectIndex: number
+	children?: Fiber[] // jsx children
 	// Data that use to create DOM element
 	renderType?: string
 	renderProps?: Record<string, any>
 	renderChild?: Fiber[]
 	toDOMElement: () => HTMLElement
+}
+
+function deepClone(obj: any) {
+	return JSON.parse(JSON.stringify(obj))
 }
 
 function toDOMElement(this: Fiber) {
@@ -73,46 +80,57 @@ function createFiber(type: Fiber["type"], props?: Fiber["props"], child?: Fiber[
 	}
 }
 
-function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fiber["child"]): Fiber {
+function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fiber[]): Fiber {
 	// @ts-ignore
 	this[0] = 3; // disable cache
 
 	const parentFiber = currentFiber // Saved for later use
 	let thisFiber, result;
 
-	// console.log("Processing: type", type, "props", props, "child", child)
+	console.log("Processing: type", type?.name || type, "props", props, "child", child)
 
 	const oldChild = parentFiber.child[parentFiber.childIndex];
 	if (oldChild?.type !== type) {
-		if (oldChild) unmountedComponents.push(oldChild);
+		// If saved child and this child is not the same type, don't reuse data from previous render
+		if (typeof oldChild?.type === "function") unmountedComponents.push(oldChild);
 		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child);
+	} else if (!parentFiber.isRoot) {
+		// Update props and child
+		parentFiber.child[parentFiber.childIndex].props = props;
+		parentFiber.child[parentFiber.childIndex].child = child;
 	}
 
 	// Try to leverage data from previous render
 	thisFiber = parentFiber.child[parentFiber.childIndex++]
 
 	if (typeof type === 'function') { // if it's a custom component
+
+		thisFiber.children = deepClone(child); // Need to deep clone because htm will change the content of it
+		console.log('children saved', thisFiber.children)
+
 		if (!parentFiber.isRoot && parentFiber.isDirty)
 			thisFiber.isDirty = true
 
 		if (thisFiber.isDirty) {
-			// console.log('result: dirty')
+			console.log('result: dirty')
 			currentFiber = thisFiber
-			result = type({...props, children: child}) // process jsx of this component as well as it's children
+			result = type({...props, children: thisFiber.children}) // process jsx of this component as well as it's children
 
 			const itself = thisFiber.child.pop()
-			// console.log('done get itself of', thisFiber.type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
+			console.log('done get itself of', thisFiber.type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
 			if (itself) {
 				thisFiber.renderType = itself.renderType
 				thisFiber.renderProps = itself.renderProps
 				thisFiber.renderChild = itself.renderChild
 			}
 		} else {
-			// console.log('result: clean')
-			thisFiber.child.forEach((child) => {
-				if (typeof child.type === 'function' && child.isDirty) {
-					currentFiber = child
-					child.type({...child.props, children: child.child})
+			console.log('result: clean, checking childs...')
+			thisFiber.child.forEach((c) => {
+				console.log(c)
+				if (typeof c.type === 'function' && c.isDirty) {
+					console.log('found dirty child', c.type.name)
+					currentFiber = c
+					c.type({...c.props, children: c.children})
 				}
 			})
 			result = thisFiber
@@ -177,14 +195,20 @@ function cleanUpEffects(fiber: Fiber) {
 
 function rerender() {
 	// Batch update state changes
+	console.log('@@@@@@@ Batch updating...')
+	console.log = (...args) => originalConsoleLog('[State change]', ...args)
 	while (batchUpdate.length) {
 		batchUpdate.pop()!()
 	}
+	console.log = originalConsoleLog
 
 	// Render phase, and schedule effects to run later
+	console.log('@@@@@@@ Rendering...')
+	console.log = (...args) => originalConsoleLog('[Render]', ...args)
 	currentFiber = rootFiber;
 	const result = (rootFiber.type as Function)({})
 	resetFiber(rootFiber) // Reset fiber to prepare for next render
+	console.log = originalConsoleLog
 
 	// Reconciliation phase: tree diffing: find out what changed, what component to mount and to unmount
 	// https://reactjs.org/docs/reconciliation.html
@@ -201,11 +225,17 @@ function rerender() {
 	// Run effects and cleanup effects of unmounted components
 	// 1: if no changes are made in layout effects: run after browser painted to the screen
 	// 2: if changes are made in layout effects: run before browser paint
+	console.log('@@@@@@ Running effects...')
+	console.log = (...args) => originalConsoleLog('[Effect]', ...args)
 	runEffects(rootFiber)
+	console.log = originalConsoleLog
 
+	console.log('@@@@@@ Cleaning up unmounted components...')
+	console.log = (...args) => originalConsoleLog('[Effect cleanup]', ...args)
 	while (unmountedComponents.length) {
 		cleanUpEffects(unmountedComponents.pop()!)
 	}
+	console.log = originalConsoleLog
 }
 
 
@@ -225,19 +255,19 @@ export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
 	thisFiber.state[thisIndex] ??= initialValue
 
 	function setState(newState: T) {
+		if (typeof newState === 'function') {
+			newState = newState(thisFiber.state[thisIndex])
+		}
 
-		if (!batchUpdate.length) setTimeout(rerender, 0)
+		if (thisFiber.state[thisIndex] !== newState) {
+			if (!batchUpdate.length) setTimeout(rerender, 0)
 
-		batchUpdate.push(function() {
-			if (typeof newState === 'function') {
-				newState = newState(thisFiber.state[thisIndex])
-			}
-
-			if (thisFiber.state[thisIndex] !== newState) {
+			batchUpdate.push(function() {
+				console.log('Update from', thisFiber.state[thisIndex], 'to', newState, 'in', (thisFiber.type as FunctionalComponent).name)
 				thisFiber.state[thisIndex] = newState
 				thisFiber.isDirty = true
-			}
-		})
+			})
+		}
 	}
 
 	return [thisFiber.state[thisIndex], setState]

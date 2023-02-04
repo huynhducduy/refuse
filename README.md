@@ -10,7 +10,7 @@ Todo:
 - [x] render
 - [x] Custom components with props, children
 - [x] useEffect with cleanup
-- [ ] When unmount: clear states, cleanup effects
+- [x] When unmount: cleanup effects
 - [x] useState
 - [X] Automatic update batching
 - [X] Defer effects
@@ -19,7 +19,9 @@ Todo:
 - [x] Custom hooks
 - [ ] memo
 - [x] Fiber, Component Tree
-- [ ] Reconciliation algorithm (dirty mark, keys, compare,...)
+- [x] Render: dirty mark, compare
+- [ ] Render: keys
+- [x] DOM diffing/patching using morphdom
 - [ ] Write tests
 - [ ] Ref
 - [ ] Portal
