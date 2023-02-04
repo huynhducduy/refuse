@@ -89,7 +89,7 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 	const parentFiber = currentFiber // Saved for later use
 	let thisFiber, result
 
-	console.log("Processing: type", type?.name || type, "props", props, "child", child)
+	console.log("Processing: type", typeof type === "function" ? type.name : type, "props", props, "child", child)
 
 	const oldChild = parentFiber.child[parentFiber.childIndex]
 	if (oldChild?.type !== type) {
@@ -282,19 +282,19 @@ export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
 	thisFiber.state[thisIndex] ??= initialValue
 
 	function setState(newState: T) {
-		if (typeof newState === 'function') {
-			newState = newState(thisFiber.state[thisIndex])
-		}
+		if (!batchUpdate.length) batchUpdateTimer = setTimeout(rerender, 0)
 
-		if (thisFiber.state[thisIndex] !== newState) {
-			if (!batchUpdate.length) batchUpdateTimer = setTimeout(rerender, 0)
+		batchUpdate.push(function() {
+			if (typeof newState === 'function') {
+				newState = newState(thisFiber.state[thisIndex])
+			}
 
-			batchUpdate.push(function() {
+			if (thisFiber.state[thisIndex] !== newState) {
 				console.log('Update from', thisFiber.state[thisIndex], 'to', newState, 'in', (thisFiber.type as FunctionalComponent).name)
 				thisFiber.state[thisIndex] = newState
 				thisFiber.isDirty = true
-			})
-		}
+			}
+		})
 	}
 
 	return [thisFiber.state[thisIndex], setState]
