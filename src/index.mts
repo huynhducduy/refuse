@@ -104,10 +104,11 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 		// If saved child and this child is not the same type, don't reuse data from previous render
 		if (typeof oldChild?.type === "function") unmountedComponents.push(oldChild)
 		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child)
+		console.log('Reinitialized', type)
 	} else if (!parentFiber.isRoot) {
-		// Update props and child
+		// Update props
 		parentFiber.child[parentFiber.childIndex].props = props
-		parentFiber.child[parentFiber.childIndex].child = child
+		// parentFiber.child[parentFiber.childIndex].child = child
 	}
 
 	// Try to leverage data from previous render
@@ -116,28 +117,28 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 	if (typeof type === 'function') { // if it's a custom component
 
 		thisFiber.children = deepClone(child) // Need to deep clone because htm will change the content of it
-		console.log('children saved', thisFiber.children)
+		console.log('Children saved', thisFiber.children)
 
 		if (!parentFiber.isRoot && parentFiber.isDirty)
 			thisFiber.isDirty = true
 
 		if (thisFiber.isDirty) {
-			console.log('result: dirty')
+			console.log('Result: dirty')
 			currentFiber = thisFiber
 			result = type({...props, children: thisFiber.children}) // process jsx of this component as well as it's children
 
 			const itself = thisFiber.child.pop()
 			if (itself) {
-				console.log('done get itself of', type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
+				console.log('Done get itself of', type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
 				thisFiber.renderType = itself.renderType
 				thisFiber.renderProps = itself.renderProps
 				thisFiber.renderChild = itself.renderChild
 			}
 		} else {
-			console.log('result: clean, checking childs...')
+			console.log('Result: clean, checking childs...')
 			thisFiber.child.forEach((c) => {
 				if (typeof c.type === 'function' && c.isDirty) {
-					console.log('found dirty child', c.type.name)
+					console.log('Found dirty child', c.type.name)
 					currentFiber = c
 					c.type({...c.props, children: c.children})
 				}
@@ -378,4 +379,35 @@ export function useCallback<T = any>(callback: T, deps: any[]): T {
 
 export function useRef<T = any>(initialValue: T) {
 	return useMemo(() => ({ current: initialValue }), [])
+}
+
+function shallowEqual(prevProps: any, nextProps: any): boolean {
+	if (prevProps === undefined) return false
+
+	const prevKeys = Object.keys(prevProps)
+	const nextKeys = Object.keys(nextProps)
+
+	if (prevKeys.length !== nextKeys.length) return false
+	if (prevKeys.length === 0) return true
+
+	for (let i = 0; i < prevKeys.length; i++) {
+		if (prevKeys[i] !== 'children' && prevProps[prevKeys[i]] !== nextProps[prevKeys[i]]) return false
+	}
+
+	return shallowEqual(prevProps.children, nextProps.children)
+}
+
+export function memo(component: FunctionalComponent, areEqual: ((prevProps: any, nextProps: any) => boolean) = shallowEqual) {
+	const memoComponent = function(props: any) {
+		const prevProps = useRef(undefined)
+		useEffect(() => {
+			prevProps.current = props
+		}, [props])
+		console.log('[Memo check]', areEqual(prevProps.current, props), prevProps.current, props)
+
+		return areEqual(prevProps.current, props) ? currentFiber : component(props)
+	}
+
+	Object.defineProperty(memoComponent, 'name', {value: component.name, writable: false});
+	return memoComponent
 }

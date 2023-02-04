@@ -1,13 +1,13 @@
-import {useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
+import {memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
 
-function Test2() {
+const Test2 = memo(function Test2() {
 
 	console.log('Test2 called')
 
 	return html`
-		<div>Test2 (static component)</div>
+		<div>Test2 (static component) ${Math.random()}</div>
 	`
-}
+})
 
 interface TestProps {
 	count: number
@@ -75,7 +75,7 @@ function Test(props: TestProps) {
 			<div>${props.text}</div>
 			<div>${count}</div>
 			<div>${someNumber}</div>
-			<div>${props.children[0]}</div>
+			<div>${props.children.join(' ')}</div>
 			<div>Will never change: ${neverChange.current}</div>
 			<button onclick=${increaseCount}>+ inner</button>
 			<${Test2}/>
@@ -139,7 +139,7 @@ function App() {
 	return html`
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)">
-				Test component 1 children 1
+				Test component 1 children 1 ${count} asdfdf
 			</${Test}>
 			<div>Outer: ${count}</div>
 			<div>Outer 2: ${count2}</div>

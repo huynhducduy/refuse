@@ -19,7 +19,7 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [x] DOM diffing/patching using morphdom
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef
-- [ ] memo
+- [x] memo
 - [ ] useContext
 - [ ] useReducer
 - [ ] Test utils, write tests
