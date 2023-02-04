@@ -22,7 +22,7 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [ ] memo
 - [ ] useContext
 - [ ] useReducer
-- [ ] Write tests
+- [ ] Test utils, write tests
 - [ ] Portal
 - [ ] Fragment
 - [ ] Error Boundary
@@ -36,7 +36,12 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [ ] useImperativeHandle
 - [ ] useDebugValue
 - [ ] useId
+- [ ] React.forwardRef
 - [ ] useSyncExternalStore
+- [ ] Dynamic import, React.lazy
+- [ ] Production build
+- [ ] Profiler
+- [ ] Linter
 
 ## Development
 ```
