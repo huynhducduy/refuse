@@ -8,23 +8,25 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [x] TypeScript
 - [x] Jsx to HyperScript using `htm`
 - [x] render
-- [x] Custom components with props, children
+- [x] Custom components with props
+- [x] Custom components with children
 - [x] useState
 - [X] Automatic state update batching
 - [x] useEffect with cleanup
 - [x] Unmount components
-- [x] Fiber, Component Tree
+- [x] Component Tree
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
 - [x] DOM diffing/patching using morphdom
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef
 - [x] memo
+- [x] Fragment
+- [x] JSX Embedding Expression
 - [ ] useContext
 - [ ] useReducer
 - [ ] Test utils, write tests
 - [ ] Portal
-- [ ] Fragment
 - [ ] Error Boundary
 - [ ] Server-side rendering
 - [ ] Synthetic Event

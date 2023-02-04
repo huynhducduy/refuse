@@ -1,4 +1,4 @@
-import {memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
+import {Fragment, memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
 
 const Test2 = memo(function Test2() {
 
@@ -75,7 +75,7 @@ function Test(props: TestProps) {
 			<div>${props.text}</div>
 			<div>${count}</div>
 			<div>${someNumber}</div>
-			<div>${props.children.join(' ')}</div>
+			<div>${props.children}</div>
 			<div>Will never change: ${neverChange.current}</div>
 			<button onclick=${increaseCount}>+ inner</button>
 			<${Test2}/>
@@ -139,14 +139,20 @@ function App() {
 	return html`
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)">
-				Test component 1 children 1 ${count} asdfdf
+				Test component 1 children 1 ${count}
 			</${Test}>
 			<div>Outer: ${count}</div>
+			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
 			<div>Outer 2: ${count2}</div>
-			<button onclick=${increaseCount}>+ outer</button>
-			<button onclick=${decreaseCount}>- outer</button>
-			<button onclick=${increaseCount2}>+ outer 2</button>
-			<button onclick=${increaseCount3}>+ both outer</button>
+			<${Fragment}>
+				<button onclick=${increaseCount}>+ outer</button>
+				<button onclick=${decreaseCount}>- outer</button>
+				<button onclick=${increaseCount2}>+ outer 2</button>
+				<button onclick=${increaseCount3}>+ both outer</button>
+			</${Fragment}>
+			<${Fragment}>
+				Single-line text
+			</${Fragment}>
 			<${count > 300 && Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
 		</div>
 	`
