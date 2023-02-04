@@ -9,26 +9,24 @@ Todo:
 - [x] Jsx to HyperScript using `htm`
 - [x] render
 - [x] Custom components with props, children
-- [x] useEffect with cleanup
-- [x] When unmount: cleanup effects
 - [x] useState
-- [X] Automatic update batching
-- [X] Defer effects
-- [ ] useCallback, useMemo
-- [ ] useLayoutEffect
-- [x] Custom hooks
-- [ ] memo
+- [X] Automatic state update batching
+- [x] useEffect with cleanup
+- [x] Unmount components
 - [x] Fiber, Component Tree
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
 - [x] DOM diffing/patching using morphdom
+- [x] useLayoutEffect
+- [ ] useCallback, useMemo
+- [ ] useRef
+- [ ] memo
 - [ ] Write tests
-- [ ] Ref
-- [ ] Portal
 - [ ] Context
+- [ ] Portal
+- [ ] Fragment
 - [ ] Error Boundary
 - [ ] Server-side rendering
-- [ ] Fragment
 - [ ] Synthetic Event
 - [ ] Devtools, debugger, HMR - Hot reload
 - [ ] Router

@@ -1,4 +1,4 @@
-import {useEffect, useState, html, render} from "./src/index.mjs";
+import {useEffect, useState, useLayoutEffect, html, render} from "./src/index.mjs";
 
 function Test2() {
 
@@ -22,6 +22,11 @@ function Test(props) {
 			return count+1
 		})
 	}
+
+	useLayoutEffect(() => {
+		setCount(999);
+		console.log('This is layout effect')
+	}, [])
 
 	useEffect(() => {
 		console.log('Inner count updated', count)

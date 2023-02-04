@@ -1,11 +1,12 @@
 // @ts-ignore
-import htm from '../node_modules/htm/dist/htm.mjs';
+import htm from '../node_modules/htm/dist/htm.mjs'
 // @ts-ignore
-import morphdom from '../node_modules/morphdom/dist/morphdom-esm.js';
+import morphdom from '../node_modules/morphdom/dist/morphdom-esm.js'
 
 let rootElement: HTMLElement, rootFiber: Fiber, currentFiber: Fiber
 let batchUpdate: Function[] = []
 let unmountedComponents: Fiber[] = []
+let batchUpdateTimer: number
 
 const originalConsoleLog = console.log
 
@@ -14,7 +15,7 @@ interface FunctionalComponent {
 }
 
 interface Fiber {
-	[x: string]: any;
+	[x: string]: any
 	isRoot?: boolean // Mark fiber as root component, root component is always dirty
 	isDirty: boolean // Mark fiber as dirty, dirty fiber will be re-rendered
 	type: string | FunctionalComponent // Type of fiber, can be a string (html tag) or a function (component)
@@ -28,6 +29,7 @@ interface Fiber {
 		callback: () => void | (() => void)
 		cleanup: void | (() => void)
 		run: boolean
+		isLayout: boolean
 	}[]
 	effectIndex: number
 	children?: Fiber[] // jsx children
@@ -82,22 +84,22 @@ function createFiber(type: Fiber["type"], props?: Fiber["props"], child?: Fiber[
 
 function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fiber[]): Fiber {
 	// @ts-ignore
-	this[0] = 3; // disable cache
+	this[0] = 3 // disable cache
 
 	const parentFiber = currentFiber // Saved for later use
-	let thisFiber, result;
+	let thisFiber, result
 
 	console.log("Processing: type", type?.name || type, "props", props, "child", child)
 
-	const oldChild = parentFiber.child[parentFiber.childIndex];
+	const oldChild = parentFiber.child[parentFiber.childIndex]
 	if (oldChild?.type !== type) {
 		// If saved child and this child is not the same type, don't reuse data from previous render
-		if (typeof oldChild?.type === "function") unmountedComponents.push(oldChild);
-		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child);
+		if (typeof oldChild?.type === "function") unmountedComponents.push(oldChild)
+		parentFiber.child[parentFiber.childIndex] = createFiber(type, props, child)
 	} else if (!parentFiber.isRoot) {
 		// Update props and child
-		parentFiber.child[parentFiber.childIndex].props = props;
-		parentFiber.child[parentFiber.childIndex].child = child;
+		parentFiber.child[parentFiber.childIndex].props = props
+		parentFiber.child[parentFiber.childIndex].child = child
 	}
 
 	// Try to leverage data from previous render
@@ -105,7 +107,7 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 
 	if (typeof type === 'function') { // if it's a custom component
 
-		thisFiber.children = deepClone(child); // Need to deep clone because htm will change the content of it
+		thisFiber.children = deepClone(child) // Need to deep clone because htm will change the content of it
 		console.log('children saved', thisFiber.children)
 
 		if (!parentFiber.isRoot && parentFiber.isDirty)
@@ -126,7 +128,6 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 		} else {
 			console.log('result: clean, checking childs...')
 			thisFiber.child.forEach((c) => {
-				console.log(c)
 				if (typeof c.type === 'function' && c.isDirty) {
 					console.log('found dirty child', c.type.name)
 					currentFiber = c
@@ -163,16 +164,16 @@ function resetFiber(fiber: Fiber) {
 	})
 }
 
-function runEffects(fiber: Fiber) {
+function runEffects(fiber: Fiber, isLayout = false) {
 	// Called in a bottom-up fashion, run children's effects first
 	fiber.child.forEach(child => {
 		if (typeof child === "object") {
-			runEffects(child)
+			runEffects(child, isLayout)
 		}
 	})
 
 	for (let i = 0; i < fiber.effects.length; i++) {
-		if (fiber.effects[i].run) {
+		if (fiber.effects[i].run && fiber.effects[i].isLayout === isLayout) {
 			fiber.effects[i].cleanup?.()
 			fiber.effects[i].cleanup = fiber.effects[i].callback()
 			fiber.effects[i].run = false
@@ -195,6 +196,7 @@ function cleanUpEffects(fiber: Fiber) {
 
 function rerender() {
 	// Batch update state changes
+	// if (batchUpdate.length === 0) return
 	console.log('@@@@@@@ Batch updating...')
 	console.log = (...args) => originalConsoleLog('[State change]', ...args)
 	while (batchUpdate.length) {
@@ -205,7 +207,7 @@ function rerender() {
 	// Render phase, and schedule effects to run later
 	console.log('@@@@@@@ Rendering...')
 	console.log = (...args) => originalConsoleLog('[Render]', ...args)
-	currentFiber = rootFiber;
+	currentFiber = rootFiber
 	const result = (rootFiber.type as Function)({})
 	resetFiber(rootFiber) // Reset fiber to prepare for next render
 	console.log = originalConsoleLog
@@ -221,26 +223,51 @@ function rerender() {
 	// Layout Effects goes here and block browser paint
 	// After running all layout effects at once, if changes are made, trigger re-render again before browser paint
 	// using requestAnimationFrame
+	const channel = new MessageChannel()
 
-	// Run effects and cleanup effects of unmounted components
-	// 1: if no changes are made in layout effects: run after browser painted to the screen
-	// 2: if changes are made in layout effects: run before browser paint
-	console.log('@@@@@@ Running effects...')
-	console.log = (...args) => originalConsoleLog('[Effect]', ...args)
-	runEffects(rootFiber)
-	console.log = originalConsoleLog
+	function runEffectsFunc() {
+		// Run effects and cleanup effects of unmounted components
+		// 1: if changes are made in layout effects: run before browser paint
+		// 2: if no changes are made in layout effects: run after browser painted to the screen
+		console.log('@@@@@@ Running effects...')
+		console.log = (...args) => originalConsoleLog('[Effect]', ...args)
+		runEffects(rootFiber)
+		console.log = originalConsoleLog
 
-	console.log('@@@@@@ Cleaning up unmounted components...')
-	console.log = (...args) => originalConsoleLog('[Effect cleanup]', ...args)
-	while (unmountedComponents.length) {
-		cleanUpEffects(unmountedComponents.pop()!)
+		// Clean up unmounted components last
+		console.log('@@@@@@ Cleaning up unmounted components...')
+		console.log = (...args) => originalConsoleLog('[Effect cleanup]', ...args)
+		while (unmountedComponents.length) {
+			cleanUpEffects(unmountedComponents.pop()!)
+		}
+		console.log = originalConsoleLog
 	}
-	console.log = originalConsoleLog
+
+	channel.port1.onmessage = function() {
+		console.log('@@@@@@ Browser painted to the screen')
+	}
+
+	requestAnimationFrame(function () {
+		console.log('@@@@@@ Running layout effects before repaint...')
+		console.log = (...args) => originalConsoleLog('[Layout effect]', ...args)
+		runEffects(rootFiber, true)
+		console.log = originalConsoleLog
+
+		if (batchUpdate.length) {
+			runEffectsFunc()
+			clearTimeout(batchUpdateTimer)
+			rerender()
+		} else {
+			channel.port1.onmessage = runEffectsFunc
+		}
+		channel.port2.postMessage(undefined)
+	})
+
 }
 
 
 export function render(component: FunctionalComponent, element: HTMLElement) {
-	rootElement = element;
+	rootElement = element
 
 	rootFiber = createFiber(() => html`<${component}/>`)
 	rootFiber.isRoot = true
@@ -260,7 +287,7 @@ export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
 		}
 
 		if (thisFiber.state[thisIndex] !== newState) {
-			if (!batchUpdate.length) setTimeout(rerender, 0)
+			if (!batchUpdate.length) batchUpdateTimer = setTimeout(rerender, 0)
 
 			batchUpdate.push(function() {
 				console.log('Update from', thisFiber.state[thisIndex], 'to', newState, 'in', (thisFiber.type as FunctionalComponent).name)
@@ -273,11 +300,11 @@ export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
 	return [thisFiber.state[thisIndex], setState]
 }
 
-export function useEffect(callback: () => () => {}, deps: any[]) {
+export function useEffect(callback: () => () => {}, deps: any[], isLayout = false) {
 	const thisFiber = currentFiber // because currentFiber change overtime, we must preserve it inside useState
 	const thisIndex = currentFiber.effectIndex++ // this change overtime too
 
-	let run = false;
+	let run = false
 
 	// No dependency, run every rerender
 	if (!deps) {
@@ -295,6 +322,9 @@ export function useEffect(callback: () => () => {}, deps: any[]) {
 			deps,
 			callback,
 			run,
+			isLayout,
 		}
 	}
 }
+
+export const useLayoutEffect = (callback: () => () => {}, deps: any[]) => useEffect(callback, deps, true)
