@@ -4,7 +4,7 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 
 ![ezgif-5-ffd434224c](https://user-images.githubusercontent.com/12293622/178789425-b6115cb7-39b0-43a2-afa7-2fd0acef0ded.gif)
 
-Todo:
+## Todo:
 - [x] TypeScript
 - [x] Jsx to HyperScript using `htm`
 - [x] render
@@ -18,11 +18,11 @@ Todo:
 - [ ] Render: keys
 - [x] DOM diffing/patching using morphdom
 - [x] useLayoutEffect
-- [ ] useCallback, useMemo
-- [ ] useRef
+- [x] useMemo, useCallback, useRef
 - [ ] memo
+- [ ] useContext
+- [ ] useReducer
 - [ ] Write tests
-- [ ] Context
 - [ ] Portal
 - [ ] Fragment
 - [ ] Error Boundary
@@ -30,6 +30,13 @@ Todo:
 - [ ] Synthetic Event
 - [ ] Devtools, debugger, HMR - Hot reload
 - [ ] Router
+- [ ] useDeferredValue
+- [ ] Suspense
+- [ ] Concurrent Mode, useTransition
+- [ ] useImperativeHandle
+- [ ] useDebugValue
+- [ ] useId
+- [ ] useSyncExternalStore
 
 ## Development
 ```

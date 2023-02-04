@@ -32,6 +32,12 @@ interface Fiber {
 		isLayout: boolean
 	}[]
 	effectIndex: number
+	memos: {
+		deps: any[]
+		factory: () => any
+		value: any
+	}[]
+	memoIndex: number
 	children?: Fiber[] // jsx children
 	// Data that use to create DOM element
 	renderType?: string
@@ -78,6 +84,8 @@ function createFiber(type: Fiber["type"], props?: Fiber["props"], child?: Fiber[
 		stateIndex: 0,
 		effects: [],
 		effectIndex: 0,
+		memos: [],
+		memoIndex: 0,
 		toDOMElement: toDOMElement,
 	}
 }
@@ -119,8 +127,8 @@ function createElement(type: Fiber["type"], props: Fiber["props"], ...child: Fib
 			result = type({...props, children: thisFiber.children}) // process jsx of this component as well as it's children
 
 			const itself = thisFiber.child.pop()
-			console.log('done get itself of', thisFiber.type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
 			if (itself) {
+				console.log('done get itself of', type.name, itself.renderType, itself.renderProps, itself.renderChild) // All children of thisFiber is processed to pure html element, the last child is the component itself
 				thisFiber.renderType = itself.renderType
 				thisFiber.renderProps = itself.renderProps
 				thisFiber.renderChild = itself.renderChild
@@ -155,6 +163,7 @@ function resetFiber(fiber: Fiber) {
 	fiber.childIndex = 0
 	fiber.stateIndex = 0
 	fiber.effectIndex = 0
+	fiber.memoIndex = 0
 	fiber.isDirty = false
 
 	fiber.child.forEach(child => {
@@ -265,9 +274,10 @@ function rerender() {
 
 }
 
-
-export function render(component: FunctionalComponent, element: HTMLElement) {
-	rootElement = element
+export function render(component: FunctionalComponent, element: HTMLElement | null) {
+	if (element) {
+		rootElement = element
+	}
 
 	rootFiber = createFiber(() => html`<${component}/>`)
 	rootFiber.isRoot = true
@@ -275,18 +285,23 @@ export function render(component: FunctionalComponent, element: HTMLElement) {
 	rerender()
 }
 
-export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
+// -----------------------------------------------------------------------------
+// Hooks implementation
+// -----------------------------------------------------------------------------
+
+export function useState<T = Exclude<any, Function>>(initialValue: T): [T, (newValue: T | ((prevState: T) => T)) => void] {
 	const thisFiber = currentFiber // because currentFiber change overtime, we must preserve it inside useState
 	const thisIndex = currentFiber.stateIndex++ // this change overtime too
 
 	thisFiber.state[thisIndex] ??= initialValue
 
-	function setState(newState: T) {
+	function setState(newState:  T | ((prevState: T) => T)) {
 		if (!batchUpdate.length) batchUpdateTimer = setTimeout(rerender, 0)
 
 		batchUpdate.push(function() {
+
 			if (typeof newState === 'function') {
-				newState = newState(thisFiber.state[thisIndex])
+				newState = (newState as (newValue: T) => T)(thisFiber.state[thisIndex])
 			}
 
 			if (thisFiber.state[thisIndex] !== newState) {
@@ -300,7 +315,7 @@ export function useState<T = any>(initialValue: T): [T, (newValue: T) => void] {
 	return [thisFiber.state[thisIndex], setState]
 }
 
-export function useEffect(callback: () => () => {}, deps: any[], isLayout = false) {
+export function useEffect(callback: () => (() => void) | void, deps: any[], isLayout = false) {
 	const thisFiber = currentFiber // because currentFiber change overtime, we must preserve it inside useState
 	const thisIndex = currentFiber.effectIndex++ // this change overtime too
 
@@ -327,4 +342,40 @@ export function useEffect(callback: () => () => {}, deps: any[], isLayout = fals
 	}
 }
 
-export const useLayoutEffect = (callback: () => () => {}, deps: any[]) => useEffect(callback, deps, true)
+export const useLayoutEffect = (callback: () => (() => void) | void, deps: any[]) => useEffect(callback, deps, true)
+
+export function useMemo<T>(factory: () => T, deps: any[]) {
+	const thisFiber = currentFiber // because currentFiber change overtime, we must preserve it inside useState
+	const thisIndex = currentFiber.memoIndex++ // this change overtime too
+
+	let update = false
+
+	// No dependency, run every rerender
+	if (!deps) {
+		update = true
+	}
+	// Has dependency, run if dependency changed
+	else if (!thisFiber.memos[thisIndex] || deps.length !== thisFiber.memos[thisIndex].deps.length
+		|| deps.some((dep, i) => dep !== thisFiber.memos[thisIndex].deps[i])) {
+		update = true
+	}
+
+	if (update) {
+		thisFiber.memos[thisIndex] = {
+			...thisFiber.memos[thisIndex],
+			deps,
+			factory,
+			value: factory(),
+		}
+	}
+
+	return thisFiber.memos[thisIndex].value
+}
+
+export function useCallback<T = any>(callback: T, deps: any[]): T {
+	return useMemo(() => callback, deps)
+}
+
+export function useRef<T = any>(initialValue: T) {
+	return useMemo(() => ({ current: initialValue }), [])
+}

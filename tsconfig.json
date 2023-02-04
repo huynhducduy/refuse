@@ -14,5 +14,5 @@
     "types": [],
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.mts"]
+  "include": ["src/**/*.ts", "src/**/*.mts", "app.mts"]
 }

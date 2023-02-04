@@ -1,4 +1,4 @@
-import {useEffect, useState, useLayoutEffect, html, render} from "./src/index.mjs";
+import {useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
 
 function Test2() {
 
@@ -9,13 +9,34 @@ function Test2() {
 	`
 }
 
-function Test(props) {
+interface TestProps {
+	count: number
+	text: string
+	children: string[]
+}
+
+function Test(props: TestProps) {
 
 	console.log('Test called with props:', props)
 
 	if (!props.children[0]) props.children[0] = 'Default children'
 
 	const [count, setCount] = useState(props.count);
+
+	const someNumber = useMemo(() => {
+		console.log('recalculating someNumber')
+		return props.count+9
+	}, [props.count])
+
+	const someFunction = useCallback(() => {
+		console.log('someFunction changed', props.count)
+	}, [props.count])
+
+	const neverChange = useRef(Math.random())
+
+	useEffect(() => {
+		someFunction()
+	}, [someFunction])
 
 	function increaseCount() {
 		setCount(count => {
@@ -35,10 +56,10 @@ function Test(props) {
 		}
 	}, [count])
 
-	useEffect(() => { // Sync props.count to inner state
-	    setCount(props.count)
-		console.log('Inner count updated from props', props.count)
-	}, [props.count])
+	// useEffect(() => { // Sync props.count to inner state
+	//     setCount(props.count)
+	// 	console.log('Inner count updated from props', props.count)
+	// }, [props.count])
 
 	// useEffect(() =>{
 	//     const id = setInterval(function log() {
@@ -53,7 +74,9 @@ function Test(props) {
 		<div style="border: 5px solid red">
 			<div>${props.text}</div>
 			<div>${count}</div>
+			<div>${someNumber}</div>
 			<div>${props.children[0]}</div>
+			<div>Will never change: ${neverChange.current}</div>
 			<button onclick=${increaseCount}>+ inner</button>
 			<${Test2}/>
 		</div>
