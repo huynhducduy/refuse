@@ -1,5 +1,5 @@
 // @ts-ignore
-import htm from '../node_modules/htm/dist/htm.mjs'
+import htm from '../node_modules/htm/src/index.mjs'
 // @ts-ignore
 import morphdom from '../node_modules/morphdom/dist/morphdom-esm.js'
 
@@ -7,7 +7,7 @@ import {isStatefulFiber} from "./utils.mjs";
 // @ts-ignore
 import clone from './rfdc.js'
 
-let rootElement: HTMLElement, rootFiber: RefuseComponent, currentFiber: RefuseComponent
+let rootElement: HTMLElement, rootFiber: RefuseComponent, currentFiber: RefuseComponent | FragmentComponent
 let batchUpdate: Function[] = []
 let unmountedComponents: Component[] = []
 let batchUpdateTimer: number
@@ -18,16 +18,20 @@ interface FunctionalComponent {
 	(props: RefuseComponent['props']): Component
 }
 
-interface HtmlComponent {
-	// Children
-	child: Component[]
+interface GeneralComponent {
 	// Data that use to create DOM element
 	renderType?: string
 	renderProps?: Record<string, any>
 	toDOMElement: () => HTMLElement | DocumentFragment
+	shouldSkip?: boolean
 }
 
-export interface RefuseComponent extends HtmlComponent {
+interface HtmlComponent extends GeneralComponent { // These component get call later in the process
+	child: (string | number)[]
+}
+
+export interface RefuseComponent extends GeneralComponent {
+	child: Component[]
 	isDirty: boolean // Mark fiber as dirty, dirty fiber will be re-rendered
 	// Data using to construct component
 	type: FunctionalComponent | typeof Fragment
@@ -53,48 +57,59 @@ export interface RefuseComponent extends HtmlComponent {
 	memoIndex: number
 }
 
-export type Component = HtmlComponent | RefuseComponent
+export interface FragmentComponent extends Omit<RefuseComponent, 'type' | 'child'> {
+	type: typeof Fragment
+	child: Child
+	isDirty: false
+}
+
+type Child = RefuseComponent['child'] | HtmlComponent['child']
+
+export type Component = FragmentComponent | RefuseComponent | HtmlComponent | false
 
 function toDOMElement(this: Component) {
-	let element: HTMLElement | DocumentFragment
+	let element: HTMLElement | DocumentFragment = document.createDocumentFragment()
 
-	if (this.renderType !== undefined) {
-		element = document.createElement(this.renderType as string) // create element of type 'type'
+	if (this) {
+		if (this.renderType !== undefined) {
+			element = document.createElement(this.renderType as string) // create element of type 'type'
 
-		for (let key in this.renderProps) {
-			if (typeof this.renderProps[key] !== "function") {
-				element.setAttribute(key, this.renderProps[key]) // add attributes to element
-			} else {
-				element.addEventListener(key.slice(2), this.renderProps[key]) // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
+			for (let key in this.renderProps) {
+				if (typeof this.renderProps[key] !== "function") {
+					element.setAttribute(key, this.renderProps[key]) // add attributes to element
+				} else {
+					element.addEventListener(key.slice(2), this.renderProps[key]) // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
+				}
 			}
 		}
-	} else {
-		element = document.createDocumentFragment()
-	}
 
-	function addComponentToElement(thing: Component, element: HTMLElement | DocumentFragment) {
-		if (thing.toDOMElement) {
-			element.appendChild(thing.toDOMElement()) // add child element to element
-		} else if (typeof thing !== "object") {
-			if (element instanceof HTMLElement) element.innerText += thing // add text to element
-			else element.appendChild(document.createTextNode(thing))
+		function addComponentToElement(thing: Child[number], element: HTMLElement | DocumentFragment) {
+			if (thing !== false) {
+				if (typeof thing !== "string" && typeof thing !== "number" && "toDOMElement" in thing) {
+					element.appendChild(thing.toDOMElement()) // add child element to element
+				} else {
+					thing = String(thing)
+					if (element instanceof HTMLElement) element.innerText += thing // add text to element
+					else element.appendChild(document.createTextNode(thing))
+				}
+			}
 		}
-	}
 
-	this.child.forEach(child => {
-		if (Array.isArray(child)) {
-			child.forEach(c => {
-				addComponentToElement(c, element)
-			})
-		} else {
-			addComponentToElement(child, element)
-		}
-	})
+		this.child.forEach(child => {
+			if (Array.isArray(child)) {
+				child.forEach(c => {
+					addComponentToElement(c, element)
+				})
+			} else {
+				addComponentToElement(child, element)
+			}
+		})
+	}
 
 	return element
 }
 
-function createComponent(type: any, props?: RefuseComponent["props"] | HtmlComponent["renderProps"], child?: Component["child"]): Component {
+function createComponent(type: any, props?: RefuseComponent["props"] | GeneralComponent["renderProps"], child?: RefuseComponent['child'], renderType?: GeneralComponent['renderType'], renderProps?: GeneralComponent['renderProps']): Component {
 	return {
 		type: type,
 		props: props ?? {},
@@ -107,85 +122,107 @@ function createComponent(type: any, props?: RefuseComponent["props"] | HtmlCompo
 		effectIndex: 0,
 		memos: [],
 		memoIndex: 0,
+		renderType: renderType,
+		renderProps: renderProps ?? {},
 		toDOMElement: toDOMElement,
 	}
 }
 
-function createElement(type: any, props: RefuseComponent["props"] | HtmlComponent["renderProps"], ...child: any[]): Component {
+function doDirtyCheck(parentFiber: RefuseComponent | FragmentComponent, component: Component | Component[], props: RefuseComponent['props'] | GeneralComponent['renderProps']) {
+	if (Array.isArray(component)) {
+		component.forEach((c) => doDirtyCheck(parentFiber, c, c !== false && "props" in c ? c.props : {}))
+	} else {
+		if (!component) return
+
+		if (isStatefulFiber(component)) {
+			console.log('Dirty checking', component.type.name)
+			if (component.isDirty) { // Is RefuseComponent and dirty
+				console.log('Result: dirty')
+				currentFiber = component
+				const result = component.type({...props, children: component.children}) // process jsx of this component as well as it's children
+
+				if (component.type !== Fragment) {
+					component.renderType = result.renderType
+					component.renderProps = result.renderProps
+					component.child = result.child
+					console.log(component.type.name, 'rendered to', component.renderType, component.renderProps, component.child)
+				} else {
+					component.renderType = undefined
+				}
+				currentFiber = parentFiber // Restore parent fiber to process siblings of thisFiber
+			} else {
+				console.log('Result: clean')
+				component.child.forEach((c) => {
+					if (typeof c !== 'string' && typeof c !== 'number')
+						doDirtyCheck(component, c, c !== false && "props" in c ? c.props : {})
+				})
+			}
+		}
+	}
+}
+
+function createElement(type: any, props: RefuseComponent["props"] | GeneralComponent["renderProps"], ...child: any[]): Component {
 	// @ts-ignore
 	this[0] = 3 // disable cache
 
 	const elementName = typeof type === "function" ? type.name : type
-	// console.log("Processing:", elementName, "props", clone(props), "child", clone(child))
+	console.log("Processing:", elementName, "props", clone(props), "child", clone(child))
 
-	if (type === false) return {
-		renderType: undefined,
-		child: [],
-		toDOMElement: toDOMElement,
-	}
+	// No need to render component with type false
 
-	if (type === Fragment) return {
-		renderType: undefined,
-		renderProps: props as HtmlComponent['renderProps'],
-		child: child,
-		toDOMElement: toDOMElement,
-	}
+	if (type === Fragment) return createComponent(type, props, child, undefined, props)
 
 	if (typeof type === 'function') { // Capturing phase
 
 		const parentFiber = currentFiber // Saved for later use
-		let thisFiber, result
+		let thisFiber
 
-		// Avoid stateless fiber
-		while (parentFiber.childIndex < parentFiber.child.length && !isStatefulFiber(parentFiber.child[parentFiber.childIndex])) {
+		// Avoid parent fiber TODO: to update
+		while (parentFiber.childIndex < parentFiber.child.length && (
+			!isStatefulFiber(parentFiber.child[parentFiber.childIndex])
+		)) {
+			// console.log(isStatefulFiber(parentFiber.child[parentFiber.childIndex]) || (parentFiber.child[parentFiber.childIndex] !== false && parentFiber.child[parentFiber.childIndex].shouldSkip !== true), clone(parentFiber.child[parentFiber.childIndex]))
 			parentFiber.childIndex++
 		}
 
-		const oldChild = parentFiber.child[parentFiber.childIndex] as RefuseComponent | undefined
+		let fiberToGetFrom = parentFiber;
+		let oldChild = fiberToGetFrom.child[fiberToGetFrom.childIndex] as RefuseComponent | undefined
+
+		// Skip element that don't have data
+		if (oldChild?.shouldSkip) {
+			console.log('Skipped empty parent')
+			fiberToGetFrom = fiberToGetFrom.child[fiberToGetFrom.childIndex] as RefuseComponent
+			oldChild = fiberToGetFrom.child[fiberToGetFrom.childIndex] as RefuseComponent | undefined
+		}
+
 		if (oldChild?.type !== type) {
 			console.log('Reinitialized:', elementName)
 			// If saved child and this child is not the same type, don't reuse data from previous render
 			if (oldChild) unmountedComponents.push(oldChild)
-			parentFiber.child[parentFiber.childIndex] = createComponent(type, props, child)
+			fiberToGetFrom.child[fiberToGetFrom.childIndex] = createComponent(type, props, child)
 		} else {
 			console.log('Reused:', elementName)
 		}
 
-		thisFiber = parentFiber.child[parentFiber.childIndex++] as RefuseComponent
+		thisFiber = fiberToGetFrom.child[fiberToGetFrom.childIndex++] as RefuseComponent
+
 		thisFiber.props = props as RefuseComponent['props']
 		thisFiber.children = clone(child) // Need to deep clone because htm will change the content of it
 
 		if (parentFiber.isDirty) thisFiber.isDirty = true
 
-		if (thisFiber.isDirty) {
-			console.log('Result: dirty')
-			currentFiber = thisFiber
-			result = type({...props, children: thisFiber.children}) // process jsx of this component as well as it's children
-			thisFiber.renderType = result.renderType
-			thisFiber.renderProps = result.renderProps
-			thisFiber.child = result.child
-			console.log(elementName, 'rendered to', thisFiber.renderType, thisFiber.renderProps, thisFiber.child)
-		} else {
-			console.log('Result: clean, checking childs...')
-			thisFiber.child.forEach((c) => {
-				if (isStatefulFiber(c) && c.isDirty) {
-					console.log('Found dirty child', c.type.name)
-					currentFiber = c
-					const result = c.type({...c.props, children: c.children})
-					c.renderType = result.renderType
-					c.renderProps = result.renderProps
-					c.child = result.child
-					console.log(elementName, 'rendered to', c.type.name, c.renderProps, c.child)
-				}
-			})
-		}
+		doDirtyCheck(parentFiber, thisFiber, props)
 
-		currentFiber = parentFiber // Restore parent fiber to process siblings of thisFiber
 		return thisFiber
-	} else { // Bubbling phase
+	} else {
+		let shouldSkip = false
+		if (child.length > 0 && typeof child[0] === 'object') {
+			shouldSkip = true
+		}
 		return {
+			shouldSkip,
 			renderType: type,
-			renderProps: props as HtmlComponent['renderProps'],
+			renderProps: props as GeneralComponent['renderProps'],
 			child: child,
 			toDOMElement: toDOMElement,
 		}
@@ -203,13 +240,13 @@ function resetFiber(fiber: Component | Component[] | string | number | null | un
 				fiber.effectIndex = 0
 				fiber.memoIndex = 0
 				fiber.isDirty = false
-
-				fiber.child.forEach(f => {
-					if (typeof f === "object") {
-						resetFiber(f)
-					}
-				})
 			}
+
+			fiber.child.forEach(f => {
+				if (typeof f === "object") {
+					resetFiber(f)
+				}
+			})
 		} else {
 			fiber.forEach(f => resetFiber(f))
 		}
@@ -263,6 +300,7 @@ function cleanUpEffects(fiber: Component | Component[] | string | number | null 
 }
 
 function rerender() {
+	console.log('----------------------------------------------------------------')
 	// Batch update state changes
 	console.log('@@@@@@@ Batch updating...')
 	console.log = (...args) => originalConsoleLog('[State change]', ...args)
@@ -277,6 +315,7 @@ function rerender() {
 	currentFiber = rootFiber
 	const result = rootFiber.type({})
 	resetFiber(rootFiber) // Reset fiber to prepare for next render
+	console.log(clone(rootFiber))
 	console.log = originalConsoleLog
 
 	// Reconciliation phase: tree diffing: find out what changed, what component to mount and to unmount

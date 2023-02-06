@@ -17,6 +17,7 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [x] Component Tree
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
+- [ ] Conditional rendering
 - [x] DOM diffing/patching using morphdom
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef

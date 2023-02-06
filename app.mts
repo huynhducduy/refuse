@@ -158,4 +158,58 @@ function App() {
 	`
 }
 
+function A() {
+	console.log('A called')
+	const [count, setCount] = useState(0)
+	function whenToRender() {
+		console.log('when to executed?')
+		return count >= 5
+	}
+	return html`
+		<${Fragment}>
+			<a>A ${count}</a>
+			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
+			<button onclick=${() => setCount(0)}>reset</button><br/>
+			${ whenToRender() && html`<${C}/>`}
+			${count < 5 ? html`
+					<${B} num=${1}/>
+					<${B} num=${2}/>
+					<span>hoho</span>
+			` : html`
+				<${B} num=${3}/>
+				<${C} num=${5}/>
+				<${B} num=${4}/>
+				<${C} num=${6}/>
+			`}
+			<span>test</span>
+		</${Fragment}>
+	`
+	}
+
+function B() {
+	const [count, setCount] = useState(0)
+	return html`
+		<${Fragment}>
+			<a>B ${count}</a>
+			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
+		</${Fragment}>
+	`
+}
+
+function C() {
+	const [count, setCount] = useState(0)
+	return html`
+		<${Fragment}>
+			<a>C ${count}</a>
+			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
+		</${Fragment}>
+	`
+}
+
+const App2 = () => html`
+		<${Fragment}>
+			<${A}/>
+		</${Fragment}>
+	`;
+
 render(App, document.getElementById("root"))
