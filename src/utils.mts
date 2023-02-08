@@ -1,6 +1,5 @@
-import type { Component, RefuseComponent } from './index.mjs';
-import {FragmentComponent} from "./index.mjs";
+import type { Fiber, RefuseFiber, FragmentFiber } from './index.mjs';
 
-export function isStatefulFiber(component: Component | string | number): component is RefuseComponent | FragmentComponent {
+export function isStatefulFiber(component: Fiber | string | number): component is RefuseFiber | FragmentFiber {
 	return typeof component === 'object' && 'type' in component;
 }

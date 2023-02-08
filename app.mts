@@ -19,7 +19,7 @@ function Test(props: TestProps) {
 
 	console.log('Test called with props:', props)
 
-	if (!props.children[0]) props.children[0] = 'Default children'
+	if (!props.children?.[0]) props.children[0] = 'Default children'
 
 	const [count, setCount] = useState(props.count);
 
@@ -74,7 +74,7 @@ function Test(props: TestProps) {
 		<div style="border: 5px solid red">
 			<div>${props.text}</div>
 			<div>${count}</div>
-			<div>${someNumber}</div>
+			<div>${someNumber} (Equal outer + 9)</div>
 			<div>${props.children}</div>
 			<div>Will never change: ${neverChange.current}</div>
 			<button onclick=${increaseCount}>+ inner</button>
@@ -139,7 +139,7 @@ function App() {
 	return html`
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)">
-				Test component 1 children 1 ${count}
+				Test component 1 children 1 ${count} (equal outer)
 			</${Test}>
 			<div>Outer: ${count}</div>
 			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
@@ -165,33 +165,42 @@ function A() {
 		console.log('when to executed?')
 		return count >= 5
 	}
+
 	return html`
 		<${Fragment}>
 			<a>A ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
-			<button onclick=${() => setCount(0)}>reset</button><br/>
-			${ whenToRender() && html`<${C}/>`}
+			<button onclick=${() => setCount(c => c+1)}>+</button>
+			<button onclick=${() => setCount(0)}>reset</button>
+			${count >= 5 && html`<${C} num=${1}/>`}
 			${count < 5 ? html`
-					<${B} num=${1}/>
-					<${B} num=${2}/>
+				<div>
+					<div>
+						<${B} num=${1}/>
+						<${B} num=${2}/>
+					</div>
 					<span>hoho</span>
+				</div>
 			` : html`
-				<${B} num=${3}/>
-				<${C} num=${5}/>
-				<${B} num=${4}/>
-				<${C} num=${6}/>
+				<div>
+					<${B}/>
+					<${C}/>
+					<${B}/>
+					<${C}/>
+				</div>
 			`}
+			<${C} num=${2}/>
 			<span>test</span>
 		</${Fragment}>
 	`
-	}
+}
 
 function B() {
+	console.log('B called')
 	const [count, setCount] = useState(0)
 	return html`
 		<${Fragment}>
 			<a>B ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
+			<button onclick=${() => setCount(c => c+1)}>+</button>
 		</${Fragment}>
 	`
 }
@@ -201,7 +210,7 @@ function C() {
 	return html`
 		<${Fragment}>
 			<a>C ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button><br/>
+			<button onclick=${() => setCount(c => c+1)}>+</button>
 		</${Fragment}>
 	`
 }
@@ -212,4 +221,4 @@ const App2 = () => html`
 		</${Fragment}>
 	`;
 
-render(App, document.getElementById("root"))
+render(App2, document.getElementById("root"))
