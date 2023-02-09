@@ -44,10 +44,10 @@ function Test(props: TestProps) {
 		})
 	}
 
-	useLayoutEffect(() => {
-		setCount(999);
-		console.log('This is layout effect')
-	}, [])
+	// useLayoutEffect(() => {
+	// 	setCount(999);
+	// 	console.log('This is layout effect')
+	// }, [])
 
 	useEffect(() => {
 		console.log('Inner count updated', count)
@@ -70,16 +70,34 @@ function Test(props: TestProps) {
 	//     }
 	// }, [count]);
 
+	const btnRef = useRef<HTMLElement | null>(null)
+
+	function setBtnBgToBlue() {
+		if (btnRef.current) {
+			btnRef.current.style.background = 'blue'
+		}
+	}
+
 	return html`
-		<div style="border: 5px solid red">
-			<div>${props.text}</div>
-			<div>${count}</div>
-			<div>${someNumber} (Equal outer + 9)</div>
-			<div>${props.children}</div>
-			<div>Will never change: ${neverChange.current}</div>
-			<button onclick=${increaseCount}>+ inner</button>
-			<${Test2}/>
-		</div>
+		<${Fragment}>
+			<div style="border: 5px solid red">
+				<div>${props.text}</div>
+				<div>${count}</div>
+				<div>${someNumber} (Equal outer + 9)</div>
+				<div>${props.children}</div>
+				<div>Will never change: ${neverChange.current}</div>
+				<button onclick=${increaseCount} ref=${btnRef}>+ inner</button>
+				<button onclick=${setBtnBgToBlue}>Set button bg to blue</button>
+				<${Test2}/>
+			</div>
+		</${Fragment}>
+	`
+}
+
+function SomeChildren({count}) {
+	console.log('SomeChildren called')
+	return html`
+		<div>Component children: ${count}</div>
 	`
 }
 
@@ -136,10 +154,20 @@ function App() {
 	//     }
 	// }, [count]);
 
+	const testRef = useRef<HTMLElement | null>(null)
+
+	function setTestBgToBlue() {
+		console.log('testRef', testRef.current)
+		if (testRef.current) {
+			testRef.current.style.background = 'blue'
+		}
+	}
+
 	return html`
 		<div style="border: 5px solid blue">
-			<${Test} count=${count} text="Test component 1 (outer as prop)">
+			<${Test} count=${count} text="Test component 1 (outer as prop)" ref=${testRef}>
 				Test component 1 children 1 ${count} (equal outer)
+				<${SomeChildren} count=${count}/>
 			</${Test}>
 			<div>Outer: ${count}</div>
 			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
@@ -154,6 +182,7 @@ function App() {
 				Single-line text
 			</${Fragment}>
 			<${count > 300 && Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
+			<button onclick=${setTestBgToBlue}>Set Test bg to blue</button>
 		</div>
 	`
 }
@@ -221,4 +250,4 @@ const App2 = () => html`
 		</${Fragment}>
 	`;
 
-render(App2, document.getElementById("root"))
+render(App, document.getElementById("root"))

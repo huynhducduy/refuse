@@ -17,29 +17,30 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [x] Component Tree
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
-- [ ] Conditional rendering
+- [x] Conditional rendering
 - [x] DOM diffing/patching using morphdom
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef
 - [x] memo
 - [x] Fragment
 - [x] JSX Embedding Expression
+- [x] DOM Ref
+- [ ] React.forwardRef
+- [ ] Error Boundary
+- [ ] Concurrent Mode, useTransition
 - [ ] useContext
 - [ ] useReducer
 - [ ] Test utils, write tests
 - [ ] Portal
-- [ ] Error Boundary
 - [ ] Server-side rendering
 - [ ] Synthetic Event
 - [ ] Devtools, debugger, HMR - Hot reload
 - [ ] Router
 - [ ] useDeferredValue
 - [ ] Suspense
-- [ ] Concurrent Mode, useTransition
 - [ ] useImperativeHandle
 - [ ] useDebugValue
 - [ ] useId
-- [ ] React.forwardRef
 - [ ] useSyncExternalStore
 - [ ] Dynamic import, React.lazy
 - [ ] Production build

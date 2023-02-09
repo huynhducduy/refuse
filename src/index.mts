@@ -21,6 +21,7 @@ interface GeneralFiber {
 	// Data that use to create DOM element
 	renderType?: string
 	renderProps?: Record<string, any>
+	ref?: any
 }
 
 // Don't need to process its child
@@ -66,6 +67,18 @@ type Child = Fiber[] | HtmlFiber["child"]
 export type Fiber = RefuseFiber | FragmentFiber | HtmlFiber | false
 export type CallableFiber = RefuseFiber | FragmentFiber
 
+function addComponentToElement(thing: Child[number], element: HTMLElement | DocumentFragment) {
+	if (thing !== false) {
+		if (typeof thing !== "string" && typeof thing !== "number") {
+			element.appendChild(toDOMElement(thing)) // add child element to element
+		} else {
+			thing = String(thing)
+			if (element instanceof HTMLElement) element.innerText += thing // add text to element
+			else element.appendChild(document.createTextNode(thing))
+		}
+	}
+}
+
 function toDOMElement(fiber: Fiber) {
 	let element: HTMLElement | DocumentFragment = document.createDocumentFragment()
 
@@ -74,7 +87,9 @@ function toDOMElement(fiber: Fiber) {
 			element = document.createElement(fiber.renderType as string) // create element of type 'type'
 
 			for (let key in fiber.renderProps) {
-				if (typeof fiber.renderProps[key] !== "function") {
+				if (key === 'ref'){
+					fiber.renderProps[key].current = element
+				} else if (typeof fiber.renderProps[key] !== "function") {
 					element.setAttribute(key, fiber.renderProps[key]) // add attributes to element
 				} else {
 					element.addEventListener(key.slice(2), fiber.renderProps[key]) // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
@@ -82,16 +97,8 @@ function toDOMElement(fiber: Fiber) {
 			}
 		}
 
-		function addComponentToElement(thing: Child[number], element: HTMLElement | DocumentFragment) {
-			if (thing !== false) {
-				if (typeof thing !== "string" && typeof thing !== "number") {
-					element.appendChild(toDOMElement(thing)) // add child element to element
-				} else {
-					thing = String(thing)
-					if (element instanceof HTMLElement) element.innerText += thing // add text to element
-					else element.appendChild(document.createTextNode(thing))
-				}
-			}
+		if (fiber?.props?.ref) {
+			fiber.props.ref.current = element
 		}
 
 		fiber.child.forEach(child => {
@@ -127,7 +134,6 @@ function createDefaultFiber(type: any, props?: RefuseFiber["props"] | GeneralFib
 
 function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: Fiber | undefined, fiber: Fiber) {
 
-	// Check reference children
 	if (fiber) {
 
 		let oldChild = oldFiber?.child
@@ -164,7 +170,6 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: Fiber | un
 				// Save props for next render
 				fiber.props = newProps
 
-
 				currentFiber = fiber
 				const result = fiber.type({...fiber.props})
 
@@ -185,7 +190,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: Fiber | un
 	return fiber
 }
 
-function* getNextRefuseFiber(fiber: Fiber): Generator<[Fiber, number]> {
+function* getNextRefuseFiber(fiber: Fiber): Generator<[RefuseFiber, number]> {
 	if (fiber === undefined) return
 	for (const i in fiber.child) {
 		if (typeof fiber.child[i]?.type === 'function') {
@@ -198,9 +203,16 @@ function* getNextRefuseFiber(fiber: Fiber): Generator<[Fiber, number]> {
 	}
 }
 
-function reconcileChild(parentFiberIsDirty, oldChild, child) {
+function reconcileChild(parentFiberIsDirty: boolean, oldChild: Fiber[], child: Fiber[]) {
 	for (const i in child) {
 		if (typeof child[i]?.type === 'function') {
+			// If there are some component passed as children to this child, then we need to reconcile them first
+			for (const j in child[i].child) {
+				if (typeof child[i].child[j]?.type === 'function') {
+					child[i].child[j] = reconcile(parentFiberIsDirty, oldChild?.[i]?.child?.[j], child[i].child[j])
+				}
+			}
+			// Then we can reconcile the child itself
 			child[i] = reconcile(parentFiberIsDirty, oldChild?.[i], child[i])
 		} else if (typeof child[i] !== 'number' && typeof child[i] !== 'string') {
 			const nextOldChild = getNextRefuseFiber(oldChild?.[i])
@@ -326,9 +338,9 @@ function rerender() {
 	// const newRootElement = rootElement.cloneNode()
 	// newRootElement.appendChild(toDOMElement(result))
 	// morphdom(rootElement, newRootElement, {
-	// 	getNodeKey: (node: HTMLElement) => {
-	// 		return node.id;
-	// 	}
+	// 	// getNodeKey: (node: HTMLElement) => {
+	// 	// 	return node.id;
+	// 	// }
 	// })
 	rootElement.textContent = ''
 	rootElement.appendChild(toDOMElement(rootFiber))
