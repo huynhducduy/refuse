@@ -4,6 +4,12 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 
 ![ezgif-5-ffd434224c](https://user-images.githubusercontent.com/12293622/178789425-b6115cb7-39b0-43a2-afa7-2fd0acef0ded.gif)
 
+Different from React:
+- No longer need to return single root element, so `Fragment` use cases now narrow down to key-ed diff only.
+- Ref works on component as well, and auto assign to the root element of the component.
+  - If the component have multiple root, it will point to the `DocumentFragment`, which will be empty (and useless) after moving its child to the DOM. [Read more](https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment#usage_notes)
+  - (Don't need to wrap component in forwardRef, just) use the second parameter of component to assign it to a specific element.
+
 ## Todo:
 - [x] TypeScript
 - [x] Jsx to HyperScript using `htm`
@@ -25,7 +31,7 @@ This is a work-in-progress, naive, hobby implementation of the React.js framewor
 - [x] Fragment
 - [x] JSX Embedding Expression
 - [x] DOM Ref
-- [ ] React.forwardRef
+- [x] React.forwardRef
 - [ ] Error Boundary
 - [ ] Concurrent Mode, useTransition
 - [ ] useContext

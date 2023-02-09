@@ -1,4 +1,4 @@
-import {Fragment, memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef} from "./src/index.mjs";
+import {RefuseElement, Fragment, memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef, Ref} from "./src/index.mjs";
 
 const Test2 = memo(function Test2() {
 
@@ -15,7 +15,7 @@ interface TestProps {
 	children: string[]
 }
 
-function Test(props: TestProps) {
+function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 
 	console.log('Test called with props:', props)
 
@@ -79,29 +79,26 @@ function Test(props: TestProps) {
 	}
 
 	return html`
-		<${Fragment}>
-			<div style="border: 5px solid red">
-				<div>${props.text}</div>
-				<div>${count}</div>
-				<div>${someNumber} (Equal outer + 9)</div>
-				<div>${props.children}</div>
-				<div>Will never change: ${neverChange.current}</div>
-				<button onclick=${increaseCount} ref=${btnRef}>+ inner</button>
-				<button onclick=${setBtnBgToBlue}>Set button bg to blue</button>
-				<${Test2}/>
-			</div>
-		</${Fragment}>
+			<div ref=${ref}>${props.text}</div>
+			<div>${count}</div>
+			<div>${someNumber} (Equal outer + 9)</div>
+			<div>${props.children}</div>
+			<div>Will never change: ${neverChange.current}</div>
+			<button onclick=${increaseCount} ref=${btnRef}>+ inner</button>
+			<button onclick=${setBtnBgToBlue}>Set button bg to blue</button>
+			<${Test2}/>
 	`
 }
 
-function SomeChildren({count}) {
+// Can return html``, string, number, string[], number[], or false/null/undefined (no render)
+function SomeChildren({count}: {count: number}): RefuseElement {
 	console.log('SomeChildren called')
-	return html`
-		<div>Component children: ${count}</div>
-	`
+	return 'SomeChildren ' + count
 }
 
-function App() {
+const x = 100
+
+function App(): RefuseElement {
 
 	console.log('App called')
 
@@ -157,7 +154,6 @@ function App() {
 	const testRef = useRef<HTMLElement | null>(null)
 
 	function setTestBgToBlue() {
-		console.log('testRef', testRef.current)
 		if (testRef.current) {
 			testRef.current.style.background = 'blue'
 		}
@@ -167,7 +163,7 @@ function App() {
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)" ref=${testRef}>
 				Test component 1 children 1 ${count} (equal outer)
-				<${SomeChildren} count=${count}/>
+				<${SomeChildren} count=${'cac'}/>
 			</${Test}>
 			<div>Outer: ${count}</div>
 			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
@@ -181,13 +177,13 @@ function App() {
 			<${Fragment}>
 				Single-line text
 			</${Fragment}>
-			<${count > 300 && Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
 			<button onclick=${setTestBgToBlue}>Set Test bg to blue</button>
+			<${count > 300 && Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
 		</div>
 	`
 }
 
-function A() {
+function A(): RefuseElement {
 	console.log('A called')
 	const [count, setCount] = useState(0)
 	function whenToRender() {
@@ -196,58 +192,50 @@ function A() {
 	}
 
 	return html`
-		<${Fragment}>
-			<a>A ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button>
-			<button onclick=${() => setCount(0)}>reset</button>
-			${count >= 5 && html`<${C} num=${1}/>`}
-			${count < 5 ? html`
+		<a>A ${count}</a>
+		<button onclick=${() => setCount(c => c+1)}>+</button>
+		<button onclick=${() => setCount(0)}>reset</button>
+		${count >= 5 && html`<${C} num=${1}/>`}
+		${count < 5 ? html`
+			<div>
 				<div>
-					<div>
-						<${B} num=${1}/>
-						<${B} num=${2}/>
-					</div>
-					<span>hoho</span>
+					<${B} num=${1}/>
+					<${B} num=${2}/>
 				</div>
-			` : html`
-				<div>
-					<${B}/>
-					<${C}/>
-					<${B}/>
-					<${C}/>
-				</div>
-			`}
-			<${C} num=${2}/>
-			<span>test</span>
-		</${Fragment}>
+				<span>hoho</span>
+			</div>
+		` : html`
+			<div>
+				<${B}/>
+				<${C}/>
+				<${B}/>
+				<${C}/>
+			</div>
+		`}
+		<${C} num=${2}/>
+		<span>test</span>
 	`
 }
 
-function B() {
+function B(): RefuseElement {
 	console.log('B called')
 	const [count, setCount] = useState(0)
 	return html`
-		<${Fragment}>
-			<a>B ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button>
-		</${Fragment}>
+		<a>B ${count}</a>
+		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
 }
 
-function C() {
+function C(): RefuseElement {
 	const [count, setCount] = useState(0)
 	return html`
-		<${Fragment}>
-			<a>C ${count}</a>
-			<button onclick=${() => setCount(c => c+1)}>+</button>
-		</${Fragment}>
+		<a>C ${count}</a>
+		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
 }
 
-const App2 = () => html`
-		<${Fragment}>
-			<${A}/>
-		</${Fragment}>
+const App2 = (): RefuseElement => html`
+		<${A}/>
 	`;
 
 render(App, document.getElementById("root"))

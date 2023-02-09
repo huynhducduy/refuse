@@ -8,7 +8,7 @@ import {isStatefulFiber} from "./utils.mjs";
 import clone from './rfdc.js'
 
 let rootElement: HTMLElement | DocumentFragment,
-	rootComponent: RefuseFiber['type'],
+	rootComponent: RefuseComponent,
 	rootFiber: Fiber,
 	currentFiber: CallableFiber // for hooks to access data
 let batchUpdate: Function[] = []
@@ -34,7 +34,7 @@ export interface RefuseFiber extends GeneralFiber {
 	isDirty: boolean // Mark fiber as dirty, dirty fiber will be re-rendered
 	// Data using to construct fiber
 	type: {
-		(props: RefuseFiber['props']): Fiber
+		<T = Record<string, any>>(props: T): Fiber | string | string[] | number | number[] | false | null | undefined
 	}
 	props: Record<string, any>
 	// Fiber state
@@ -66,6 +66,8 @@ type Child = Fiber[] | HtmlFiber["child"]
 
 export type Fiber = RefuseFiber | FragmentFiber | HtmlFiber | false
 export type CallableFiber = RefuseFiber | FragmentFiber
+export type RefuseComponent = RefuseFiber['type']
+export type RefuseElement = ReturnType<RefuseComponent>
 
 function addComponentToElement(thing: Child[number], element: HTMLElement | DocumentFragment) {
 	if (thing !== false) {
@@ -80,15 +82,15 @@ function addComponentToElement(thing: Child[number], element: HTMLElement | Docu
 }
 
 function toDOMElement(fiber: Fiber) {
-	let element: HTMLElement | DocumentFragment = document.createDocumentFragment()
+	let element: HTMLElement | DocumentFragment = new DocumentFragment()
 
 	if (fiber) {
 		if (fiber.renderType !== undefined) {
 			element = document.createElement(fiber.renderType as string) // create element of type 'type'
 
 			for (let key in fiber.renderProps) {
-				if (key === 'ref'){
-					fiber.renderProps[key].current = element
+				if (key === 'ref' && fiber.renderProps.ref){
+					fiber.renderProps.ref.current = element
 				} else if (typeof fiber.renderProps[key] !== "function") {
 					element.setAttribute(key, fiber.renderProps[key]) // add attributes to element
 				} else {
@@ -169,13 +171,26 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: Fiber | un
 
 				// Save props for next render
 				fiber.props = newProps
+				const ref = fiber.props.ref
+				// TODO: using delete here will affect perfomance, find a better way
+				delete fiber.props.ref
 
 				currentFiber = fiber
-				const result = fiber.type({...fiber.props})
+				const result = fiber.type({...fiber.props}, ref)
 
-				fiber.renderType = result.renderType
-				fiber.renderProps = result.renderProps
-				fiber.child = result.child
+				if ([null, undefined, false].includes(result)) {
+					// Stop reconcile child if result is null, undefined, or false
+					return
+				} else if (Array.isArray(result)) {
+					// Array of text, string
+					fiber.child = result
+				} else if (typeof result !== 'object') {
+					fiber.child = [result]
+				} else {
+					fiber.renderType = result.renderType
+					fiber.renderProps = result.renderProps
+					fiber.child = result.child
+				}
 				console.log('Result:', fiber.type.name, clone(fiber)) // No child state
 			} else {
 				console.log(fiber.type.name, 'is clean')
@@ -192,7 +207,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: Fiber | un
 
 function* getNextRefuseFiber(fiber: Fiber): Generator<[RefuseFiber, number]> {
 	if (fiber === undefined) return
-	for (const i in fiber.child) {
+	for (const i in fiber?.child) {
 		if (typeof fiber.child[i]?.type === 'function') {
 			yield [fiber, i]
 		} else if (typeof fiber.child[i] !== 'number' && typeof fiber.child[i] !== 'string') {
@@ -242,9 +257,10 @@ function createElement(type: any, props: any, ...child: any[]): Fiber {
 	}
 }
 
-export const html = htm.bind(createElement)
+export const html: (strings: TemplateStringsArray, ...rest: any[]) => RefuseElement = htm.bind(createElement)
 
 function resetFiber(fiber: Fiber | Fiber[] | string | number | null | undefined) {
+	console.log(fiber)
 	if (typeof fiber === "object" && fiber) {
 		if (!Array.isArray(fiber)) {
 			if (isStatefulFiber(fiber)) {
@@ -500,6 +516,8 @@ export function useRef<T = any>(initialValue: T) {
 	return useMemo(() => ({ current: initialValue }), [])
 }
 
+export type Ref<T> = ReturnType<typeof useRef<T>>
+
 function shallowEqual(prevProps: any, nextProps: any): boolean {
 	if (prevProps === undefined) return false
 
@@ -516,7 +534,7 @@ function shallowEqual(prevProps: any, nextProps: any): boolean {
 	return shallowEqual(prevProps.children, nextProps.children)
 }
 
-export function memo(component: CallableFiber['type'], areEqual: ((prevProps: any, nextProps: any) => boolean) = shallowEqual) {
+export function memo(component: RefuseComponent, areEqual: ((prevProps: any, nextProps: any) => boolean) = shallowEqual) {
 	const memoComponent = function(props: any) {
 		const prevProps = useRef(undefined)
 		useEffect(() => {
