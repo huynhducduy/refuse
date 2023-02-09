@@ -1,5 +1,5 @@
-import type { Fiber, RefuseFiber, FragmentFiber } from './index.mjs';
+import type { RefuseFiber } from './render.mjs';
 
-export function isStatefulFiber(component: Fiber | string | number): component is RefuseFiber | FragmentFiber {
-	return typeof component === 'object' && 'type' in component;
+export function isRefuseFiber(fiber: any): fiber is RefuseFiber {
+	return typeof fiber === 'object' && 'type' in fiber && typeof fiber.type === 'function';
 }

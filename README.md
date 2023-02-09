@@ -9,6 +9,8 @@ Different from React:
 - Ref works on component as well, and auto assign to the root element of the component.
   - If the component have multiple root, it will point to the `DocumentFragment`, which will be empty (and useless) after moving its child to the DOM. [Read more](https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment#usage_notes)
   - (Don't need to wrap component in forwardRef, just) use the second parameter of component to assign it to a specific element.
+- Component can return `number[]` as well as `string[]` to render multiple elements.
+  - Component can return `null`,`undefined`,`false` to skip rendering.
 
 ## Todo:
 - [x] TypeScript
@@ -52,6 +54,7 @@ Different from React:
 - [ ] Production build
 - [ ] Profiler
 - [ ] Linter
+- [ ] Type checker on tagged template
 
 ## Development
 ```

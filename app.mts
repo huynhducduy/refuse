@@ -1,4 +1,19 @@
-import {RefuseElement, Fragment, memo, useMemo, useCallback, useEffect, useState, useLayoutEffect, html, render, useRef, Ref} from "./src/index.mjs";
+
+
+import type {RefuseElement, Ref} from "./src/index.mjs";
+import {Fragment,
+	memo,
+	useMemo,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useState,
+	useRef,
+	html,
+	render,
+} from "./src/index.mjs";
+
+console.log(html`${"a"}`)
 
 const Test2 = memo(function Test2() {
 
@@ -79,6 +94,7 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 	}
 
 	return html`
+		<div style="border: 5px solid red">
 			<div ref=${ref}>${props.text}</div>
 			<div>${count}</div>
 			<div>${someNumber} (Equal outer + 9)</div>
@@ -87,16 +103,14 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 			<button onclick=${increaseCount} ref=${btnRef}>+ inner</button>
 			<button onclick=${setBtnBgToBlue}>Set button bg to blue</button>
 			<${Test2}/>
+		</div>
 	`
 }
 
-// Can return html``, string, number, string[], number[], or false/null/undefined (no render)
 function SomeChildren({count}: {count: number}): RefuseElement {
 	console.log('SomeChildren called')
-	return 'SomeChildren ' + count
+	return ['SomeChildren ', count]
 }
-
-const x = 100
 
 function App(): RefuseElement {
 
