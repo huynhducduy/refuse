@@ -9,8 +9,17 @@ Different from React:
 - Ref works on component as well, and auto assign to the root element of the component.
   - If the component have multiple root, it will point to the `DocumentFragment`, which will be empty (and useless) after moving its child to the DOM. [Read more](https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment#usage_notes)
   - (Don't need to wrap component in forwardRef, just) use the second parameter of component to assign it to a specific element.
-- Component can return `number[]` as well as `string[]` to render multiple elements.
+- Component can return `number[]`,`string[]`,`fuse[]` or even `string[][]` to render multiple elements.
   - Component can return `null`,`undefined`,`false` to skip rendering.
+
+Syntax Note:
+- Spread props: `<div ...${props}>` instead of `<div {...props}>`
+- HTML's optional quotes: `<div class=foo>`
+- Component end-tags: `<${Foo}>bar<//>`
+- Comment: `<!-- comment -->`
+
+Syntax Highlighting:
+- VSCode: [lit-html](https://marketplace.visualstudio.com/items?itemName=bierner.lit-html)
 
 ## Todo:
 - [x] TypeScript
@@ -26,7 +35,7 @@ Different from React:
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
 - [x] Conditional rendering
-- [x] DOM diffing/patching using morphdom
+- [ ] DOM diffing/patching
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef
 - [x] memo
@@ -63,3 +72,7 @@ tsc --watch
 ```
 
 Open `index.html` in browser
+
+### Personal note
+- https://github.com/developit/htm/tree/master/packages/babel-plugin-htm
+- https://github.com/developit/htm/tree/master/packages/babel-plugin-transform-jsx-to-htm

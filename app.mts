@@ -7,20 +7,20 @@ import {Fragment,
 	useLayoutEffect,
 	useState,
 	useRef,
-	html,
+	fuse,
 	render,
 } from "./src/index.mjs";
 // const testProps = {
 // 	[Symbol()]: true,
 // }
 //
-// console.log(html`<a ...${testProps} />`)
+// console.log(fuse`<a ...${testProps} />`)
 
 const Test2 = memo(function Test2() {
 
 	console.log('Test2 called')
 
-	return html`
+	return fuse`
 		<div>Test2 (static component) ${Math.random()}</div>
 	`
 })
@@ -94,7 +94,7 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 		}
 	}
 
-	return html`
+	return fuse`
 		<div style="border: 5px solid red">
 			<div ref=${ref}>${props.text}</div>
 			<div>${count}</div>
@@ -110,7 +110,7 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 
 function SomeChildren({count}: {count: number}): RefuseElement {
 	console.log('SomeChildren called')
-	return ['SomeChildren ', count, undefined]
+	return ['SomeChildren ', count, undefined, ['heheh', fuse`<div>ola</div>`, 'ahaha']]
 }
 
 function App(): RefuseElement {
@@ -174,28 +174,28 @@ function App(): RefuseElement {
 		}
 	}
 
-	return html`
+	return fuse`
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)" ref=${testRef}>
 				Test component 1 children 1 ${count} (equal outer)
 				<div>
 					<${SomeChildren} count=${count}/>
 				</div>
-			</${Test}>
+			<//>
 			<div>Outer: ${count}</div>
-			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
+			${[1,2,3].map(i => fuse`<div>Map ${i}</div>`)}
 			<div>Outer 2: ${count2}</div>
 			<${Fragment}>
 				<button onclick=${increaseCount}>+ outer</button>
 				<button onclick=${decreaseCount}>- outer</button>
 				<button onclick=${increaseCount2}>+ outer 2</button>
 				<button onclick=${increaseCount3}>+ both outer</button>
-			</${Fragment}>
+			<//>
 			<${Fragment}>
 				Single-line text
-			</${Fragment}>
+			<//>
 			<button onclick=${setTestBgToBlue}>Set Test bg to blue</button>
-			${count > 300 && html`<div>
+			${count > 300 && fuse`<div>
 				<div>
 					<${Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
 				</div>
@@ -212,12 +212,12 @@ function A(): RefuseElement {
 		return count >= 5
 	}
 
-	return html`
+	return fuse`
 		<a>A ${count}</a>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
 		<button onclick=${() => setCount(0)}>reset</button>
-		${count >= 5 && html`<${C} num=${1}/>`}
-		${count < 5 ? html`
+		${count >= 5 && fuse`<${C} num=${1}/>`}
+		${count < 5 ? fuse`
 			<div>
 				<div>
 					<${B} num=${1}/>
@@ -225,7 +225,7 @@ function A(): RefuseElement {
 				</div>
 				<span>hoho</span>
 			</div>
-		` : html`
+		` : fuse`
 			<div>
 				<${B}/>
 				<${C}/>
@@ -241,7 +241,7 @@ function A(): RefuseElement {
 function B(): RefuseElement {
 	console.log('B called')
 	const [count, setCount] = useState(0)
-	return html`
+	return fuse`
 		<a>B ${count}</a>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
@@ -249,15 +249,15 @@ function B(): RefuseElement {
 
 function C(): RefuseElement {
 	const [count, setCount] = useState(0)
-	return html`
+	return fuse`
 		<a>C ${count}</a>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
 }
 
-const App2 = (): RefuseElement => html`
-		<${App}/>
-		<${A}/>
-	`;
+const App2 = (): RefuseElement => [
+	fuse`<${App}/>`,
+	fuse`<${A}/>`
+];
 
 render(App2, document.getElementById("root"))

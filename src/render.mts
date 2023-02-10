@@ -47,8 +47,8 @@ interface Props {
 
 export type Fiber = RefuseFiber | HtmlFiber | string | number | false | null | undefined
 
-export type RefuseElement = Fiber | Fiber[]
-type Html = (strings: TemplateStringsArray, ...rest: any[]) => RefuseElement
+export type RefuseElement = Fiber | Fiber[] | RefuseElement[]
+type Fuse = (strings: TemplateStringsArray, ...rest: any[]) => RefuseElement
 export type RefuseComponent = <T extends Props = Props>(props: T, ref?: Ref) => RefuseElement
 
 // Utility types
@@ -139,7 +139,7 @@ function createElement(type: any, props: any, ...child: any[]): Fiber {
 	}
 }
 
-const html: Html = htm.bind(createElement)
+const fuse: Fuse = htm.bind(createElement)
 
 function markAsUnmounted(fiber: Fiber | string | number) {
 	if (typeof fiber !== 'number' && typeof fiber !== 'string' && isRefuseFiber(fiber)) {
@@ -163,7 +163,7 @@ function toDOMElement(fiber: RefuseFiber | HtmlFiber) {
 	let element: HTMLElement | DocumentFragment = new DocumentFragment()
 
 	if (fiber.renderType !== undefined) {
-		element = document.createElement(fiber.renderType as string) // create element of type 'type'
+		element = document.createElement(fiber.renderType) // create element of type 'type'
 
 		for (let key in fiber.renderProps) {
 			if (typeof fiber.renderProps[key] !== "function") {
@@ -220,7 +220,7 @@ function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['chil
 				// Iterate in indirect child
 				for (const j of nextChild) {
 					const oldChildNext = nextOldChild.next().value
-					j[0].child[j[1]] = reconcile(parentFiberIsDirty, oldChildNext?.[0]?.child?.[oldChildNext[1]], j[0].child[j[1]] as RefuseFiber)
+					j[0].child[j[1]] = reconcile(parentFiberIsDirty, oldChildNext?.[0]?.child?.[oldChildNext[1]], j[0].child[j[1]] as RefuseFiber) // result getNextRefuseFiberInChild will always be RefuseFiber
 				}
 
 				// Clean old child that not match with new child if there are any
@@ -289,7 +289,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 				fiber.child = []
 			} else if (Array.isArray(result)) {
 				// Array of text, string
-				fiber.child = result
+				fiber.child = result as RefuseFiber['child'] // TODO: investigate how to eliminate this type cast
 			} else if (typeof result !== 'object' || (isRefuseFiber(result) && result.type !== fiber.type)) {
 				fiber.child = [result]
 			} else {
@@ -297,11 +297,11 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 				fiber.renderProps = result.renderProps
 				fiber.child = result.child
 			}
-			// console.log('Result:', fiber.type.name, clone(fiber)) // No child state
+			console.log('Result:', fiber.type.name, clone(fiber)) // No child state
 		} else {
 			console.log(fiber.type.name, 'is clean')
 			if (isReuse) {
-				fiber = oldFiber as RefuseFiber
+				fiber = oldFiber as RefuseFiber // If isReuse then oldFiber is RefuseFiber
 			}
 		}
 	}
@@ -467,7 +467,7 @@ function render(component: RefuseComponent, element: HTMLElement | null) {
 
 export {
 	render,
-	html,
+	fuse,
 	Fragment,
 	currentFiber,
 	batchUpdate,
