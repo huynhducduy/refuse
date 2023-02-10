@@ -1,5 +1,3 @@
-
-
 import type {RefuseElement, Ref} from "./src/index.mjs";
 import {Fragment,
 	memo,
@@ -12,8 +10,11 @@ import {Fragment,
 	html,
 	render,
 } from "./src/index.mjs";
-
-console.log(html`${"a"}`)
+// const testProps = {
+// 	[Symbol()]: true,
+// }
+//
+// console.log(html`<a ...${testProps} />`)
 
 const Test2 = memo(function Test2() {
 
@@ -109,7 +110,7 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 
 function SomeChildren({count}: {count: number}): RefuseElement {
 	console.log('SomeChildren called')
-	return ['SomeChildren ', count]
+	return ['SomeChildren ', count, undefined]
 }
 
 function App(): RefuseElement {
@@ -177,7 +178,9 @@ function App(): RefuseElement {
 		<div style="border: 5px solid blue">
 			<${Test} count=${count} text="Test component 1 (outer as prop)" ref=${testRef}>
 				Test component 1 children 1 ${count} (equal outer)
-				<${SomeChildren} count=${'cac'}/>
+				<div>
+					<${SomeChildren} count=${count}/>
+				</div>
 			</${Test}>
 			<div>Outer: ${count}</div>
 			${[1,2,3].map(i => html`<div>Map ${i}</div>`)}
@@ -192,7 +195,11 @@ function App(): RefuseElement {
 				Single-line text
 			</${Fragment}>
 			<button onclick=${setTestBgToBlue}>Set Test bg to blue</button>
-			<${count > 300 && Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
+			${count > 300 && html`<div>
+				<div>
+					<${Test} count=${count2} text="Test component 2 (outer2 as prop)"/>
+				</div>
+			</div>`}
 		</div>
 	`
 }
@@ -249,7 +256,8 @@ function C(): RefuseElement {
 }
 
 const App2 = (): RefuseElement => html`
+		<${App}/>
 		<${A}/>
 	`;
 
-render(App, document.getElementById("root"))
+render(App2, document.getElementById("root"))
