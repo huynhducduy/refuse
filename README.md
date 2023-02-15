@@ -29,13 +29,14 @@ Syntax Highlighting:
 - [x] Custom components with children
 - [x] useState
 - [X] Automatic state update batching
+- [ ] flushSync
 - [x] useEffect with cleanup
 - [x] Unmount components
 - [x] Component Tree
 - [x] Render: dirty mark, compare
 - [ ] Render: keys
 - [x] Conditional rendering
-- [ ] DOM diffing/patching
+- [x] DOM diffing/patching
 - [x] useLayoutEffect
 - [x] useMemo, useCallback, useRef
 - [x] memo
@@ -64,6 +65,7 @@ Syntax Highlighting:
 - [ ] Profiler
 - [ ] Linter
 - [ ] Type checker on tagged template
+- [ ] useEvent
 
 ## Development
 ```

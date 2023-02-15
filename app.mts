@@ -110,7 +110,16 @@ function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
 
 function SomeChildren({count}: {count: number}): RefuseElement {
 	console.log('SomeChildren called')
-	return ['SomeChildren ', count, undefined, ['heheh', fuse`<div>ola</div>`, 'ahaha']]
+	return ['SomeChildren ',
+		count,
+		undefined,
+		null,
+		false, ['heheh',
+			fuse`<div>ola</div>`,
+			fuse`<${C}/>`,
+			'ahaha'
+		]
+	]
 }
 
 function App(): RefuseElement {
@@ -186,6 +195,7 @@ function App(): RefuseElement {
 			${[1,2,3].map(i => fuse`<div>Map ${i}</div>`)}
 			<div>Outer 2: ${count2}</div>
 			<${Fragment}>
+				<input/>
 				<button onclick=${increaseCount}>+ outer</button>
 				<button onclick=${decreaseCount}>- outer</button>
 				<button onclick=${increaseCount2}>+ outer 2</button>
@@ -214,16 +224,17 @@ function A(): RefuseElement {
 
 	return fuse`
 		<a>A ${count}</a>
+		<input/>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
-		<button onclick=${() => setCount(0)}>reset</button>
+<!--		<button onclick=${() => setCount(0)}>reset</button>-->
 		${count >= 5 && fuse`<${C} num=${1}/>`}
 		${count < 5 ? fuse`
 			<div>
 				<div>
 					<${B} num=${1}/>
-					<${B} num=${2}/>
+<!--					<${B} num=${2}/>-->
 				</div>
-				<span>hoho</span>
+				<span>zz</span>
 			</div>
 		` : fuse`
 			<div>
@@ -233,7 +244,7 @@ function A(): RefuseElement {
 				<${C}/>
 			</div>
 		`}
-		<${C} num=${2}/>
+<!--		<${C} num=${2}/>-->
 		<span>test</span>
 	`
 }
@@ -242,6 +253,9 @@ function B(): RefuseElement {
 	console.log('B called')
 	const [count, setCount] = useState(0)
 	return fuse`
+		hihi
+		${['hoho']}
+		<input/>
 		<a>B ${count}</a>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
