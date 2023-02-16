@@ -1,11 +1,10 @@
 # Refuse [![npm version](https://badge.fury.io/js/refusejs.svg)](https://badge.fury.io/js/refusejs)
 
 ![Refuse](https://user-images.githubusercontent.com/12293622/219362480-f01fec20-f405-44e4-af0f-10cfc5712c30.png)
-The name of `refuse` coming from the main action of it: `fuse` (join or blend) multiple components to form a single working app. Fun fact: it's also mean `trash`, or refer to the action of not willing to do something in English)
-
+The name of `refuse` comes from its main action: `fuse` (join or blend) multiple components to form a single working app. Fun fact: it also means `trash`, or refers to the action of `being not willing to do something` in English)
 > **Note**: This library is a work-in-progress. Some features are not available yet. See [Feature lists](#feature-lists) for more details.
 
-[![From Vietnam with <3](https://raw.githubusercontent.com/webuild-community/badge/master/svg/love.svg)](https://webuild.community) [![Built with WeBuild](https://raw.githubusercontent.com/webuild-community/badge/master/svg/WeBuild.svg)](https://webuild.community)
+[![Built with WeBuild](https://raw.githubusercontent.com/webuild-community/badge/master/svg/WeBuild.svg)](https://webuild.community) [![From Vietnam with <3](https://raw.githubusercontent.com/webuild-community/badge/master/svg/love.svg)](https://webuild.community)
 
 Key points:
 - Same modern API as React.js
