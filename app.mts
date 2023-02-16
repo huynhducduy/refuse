@@ -185,6 +185,7 @@ function App(): RefuseElement {
 
 	return fuse`
 		<div style="border: 5px solid blue">
+			<input/>
 			<${Test} count=${count} text="Test component 1 (outer as prop)" ref=${testRef}>
 				Test component 1 children 1 ${count} (equal outer)
 				<div>
@@ -224,17 +225,16 @@ function A(): RefuseElement {
 
 	return fuse`
 		<a>A ${count}</a>
-		<input/>
+		<input count=${count}/>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
-<!--		<button onclick=${() => setCount(0)}>reset</button>-->
+		<button onclick=${() => setCount(0)}>reset</button>
 		${count >= 5 && fuse`<${C} num=${1}/>`}
 		${count < 5 ? fuse`
 			<div>
 				<div>
 					<${B} num=${1}/>
-<!--					<${B} num=${2}/>-->
+					<${B} num=${2}/>
 				</div>
-				<span>zz</span>
 			</div>
 		` : fuse`
 			<div>
@@ -244,7 +244,7 @@ function A(): RefuseElement {
 				<${C}/>
 			</div>
 		`}
-<!--		<${C} num=${2}/>-->
+		<${C} num=${2}/>
 		<span>test</span>
 	`
 }
@@ -253,10 +253,8 @@ function B(): RefuseElement {
 	console.log('B called')
 	const [count, setCount] = useState(0)
 	return fuse`
-		hihi
-		${['hoho']}
-		<input/>
 		<a>B ${count}</a>
+		<input count=${count}/>
 		<button onclick=${() => setCount(c => c+1)}>+</button>
 	`
 }

@@ -129,8 +129,8 @@ function createElement(type: any, props: any, ...child: any[]): Fiber {
 		}
 
 		for (const prop of Object.values(props)) {
-			if (typeof prop !== 'string' && typeof prop !== 'function') {
-				throwElementError('Invalid element prop value in ' + type + ', we only support for string and function prop value.')
+			if (typeof prop !== 'string' && typeof prop !== 'number' && typeof prop !== 'function') {
+				throwElementError('Invalid element prop value in ' + type + ', we only support for string, number and function prop value.')
 			}
 		}
 
@@ -176,16 +176,31 @@ function* getNextRefuseFiberInChild(fiber: Fiber): Generator<[RefuseFiber['child
 	}
 }
 
-function addComponentToElement(fiber: Fiber, oldFiber: Fiber, element: HTMLElement | DocumentFragment) {
+function addComponentToElement(fiber: Fiber, oldFiber: Fiber, element: Element | DocumentFragment) {
 	if (Array.isArray(fiber)) {
 		fiber.forEach((c, i) => {
-			addComponentToElement(c, oldFiber?.[i], element)
+			let oldFiberChild
+			if (typeof oldFiber !== "string" && typeof oldFiber !== "number" && oldFiber && oldFiber.DOMNode) {
+				if (Array.isArray(oldFiber)) {
+					oldFiberChild = oldFiber[i]
+				} else {
+					oldFiberChild = oldFiber.child[i]
+				}
+			}
+			addComponentToElement(c, oldFiberChild, element)
 		})
 	} else {
 		if (fiber !== false && fiber !== null && fiber !== undefined) {
 			if (fiber && typeof fiber !== "string" && typeof fiber !== "number") {
-				toDOMElement(fiber, oldFiber?.child)
-				element.appendChild(fiber.DOMNode!) // add child element to element
+				if (!isRefuseFiber(fiber)) { // If this is a refuse fiber, we already process it
+					let oldChild
+					if (typeof oldFiber !== "string" && typeof oldFiber !== "number" && oldFiber && oldFiber.DOMNode) {
+						fiber.DOMNode = oldFiber.DOMNode
+						oldChild = oldFiber.child
+					}
+					toDOMElement(fiber, oldChild)
+				}
+				element.appendChild(fiber.DOMNode!)
 			} else {
 				element.appendChild(document.createTextNode(String(fiber)))
 			}
@@ -194,71 +209,75 @@ function addComponentToElement(fiber: Fiber, oldFiber: Fiber, element: HTMLEleme
 }
 
 function toDOMElement(fiber: HtmlFiber | RefuseFiber, oldChild: HtmlFiber['child'] | undefined) {
-	if ("isProcessed" in fiber && fiber.isProcessed) return
 
-	let element: Element | DocumentFragment = new DocumentFragment()
+	if ("isProcessed" in fiber && fiber.isProcessed) {
+		return
+	} else {
 
-	if (fiber.renderType !== undefined) {
+		let element: Element | DocumentFragment = new DocumentFragment()
 
-		let attributes: Record<string, any> = {},
-			events: Record<string, any> = {}
+		if (fiber.renderType !== undefined) {
 
-		for (let key in fiber.renderProps) {
-			if (![null, undefined, false].includes(fiber.renderProps[key])) {
-				if (typeof fiber.renderProps[key] !== "function") {
-					attributes[key] = fiber.renderProps[key]
-				} else {
-					events[key.slice(2)] = fiber.renderProps[key] // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
-				}
-			}
-		}
+			let attributes: Record<string, any> = {},
+				events: Record<string, any> = {}
 
-		if (fiber?.DOMNode && fiber.DOMNode instanceof Element && fiber.DOMNode.tagName.toLowerCase() === fiber.renderType) {
-			// Reuse oldFiber.DOMNode
-			element = fiber.DOMNode
-
-			for (const attr of fiber.DOMNode.attributes) {
-				if (!(attr.name in attributes)) {
-					element.removeAttribute(attr.name)
+			for (let key in fiber.renderProps) {
+				if (![null, undefined, false].includes(fiber.renderProps[key])) {
+					if (typeof fiber.renderProps[key] !== "function") {
+						attributes[key] = fiber.renderProps[key]
+					} else {
+						events[key.slice(2)] = fiber.renderProps[key] // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
+					}
 				}
 			}
 
-			// @ts-ignore
-			const oldEvents: Record<string, EventListenerOrEventListenerObject> = element.getEventListeners()
+			if (fiber?.DOMNode && fiber.DOMNode instanceof Element && fiber.DOMNode.tagName.toLowerCase() === fiber.renderType) {
+				// Reuse oldFiber.DOMNode
+				element = fiber.DOMNode
 
-			for (const eventName in oldEvents) {
-				element.removeEventListener(eventName, oldEvents[eventName])
+				for (const attr of fiber.DOMNode.attributes) {
+					if (!(attr.name in attributes)) {
+						element.removeAttribute(attr.name)
+					}
+				}
+
+				// @ts-ignore
+				const oldEvents: Record<string, any[]> = element.getEventListeners()
+
+				for (const eventName in oldEvents) {
+					oldEvents[eventName].forEach(event => {
+						element.removeEventListener(eventName, event.listener)
+					})
+				}
+
+				while (element.firstChild) {
+					element.removeChild(element.firstChild);
+				}
+
+			} else {
+				// Init new DOMNode
+				element = document.createElement(fiber.renderType)
 			}
 
-			while (element.firstChild) {
-				element.removeChild(element.firstChild);
+			for (let key in attributes) {
+				element.setAttribute(key, attributes[key])
 			}
 
-		} else {
-			// Init new DOMNode
-			element = document.createElement(fiber.renderType)
-			console.log('Init new DOMNode', fiber)
-			console.log("why?:", fiber?.DOMNode, fiber?.DOMNode instanceof Element, fiber?.DOMNode?.tagName.toLowerCase())
+			for (let key in events) {
+				element.addEventListener(key, events[key])
+			}
+
+			if (fiber?.ref) {
+				fiber.ref.current = element
+			}
 		}
 
-		for (let key in attributes) {
-			element.setAttribute(key, attributes[key])
-		}
-
-		for (let key in events) {
-			element.addEventListener(key, events[key])
-		}
-
-		if (fiber?.ref) {
-			fiber.ref.current = element
-		}
+		fiber.DOMNode = element
 	}
 
 	fiber.child.forEach((child, index) => {
-		addComponentToElement(child, oldChild?.[index], element)
+		addComponentToElement(child, oldChild?.[index], fiber.DOMNode!)
 	})
-
-	fiber.DOMNode = element
 }
 
 
@@ -388,7 +407,6 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 	reconcileChild("isDirty" in fiber ? fiber.isDirty : false, oldChild, fiber.child, fiber.DOMNode!)
 	console.log('DONE: ', fiber.type.name, clone(fiber))
 	toDOMElement(fiber, oldChild)
-
 	fiber.isProcessed = true
 
 	return fiber
