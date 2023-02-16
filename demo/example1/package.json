@@ -1,0 +1,20 @@
+{
+  "name": "example1",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "author": "Huynh Duc Duy",
+  "license": "ISC",
+  "dependencies": {
+    "refusejs": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5",
+    "vite": "^4.1.1"
+  }
+}

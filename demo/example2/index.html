@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Refuse</title>
+</head>
+<body>
+<div id="root"></div>
+<div id="root2"></div>
+<script type="module">
+	import * as Refuse from './refuse.modern.js'; // Support only modern browsers
+	// import * as Refuse from './refuse.module.js'; // Support all browsers
+
+	Refuse.render(
+		() => Refuse.fuse`
+			<div>
+				<h1>Hello, world!</h1>
+				<p>It's a beautiful day.</p>
+			</div>
+		`,
+		document.getElementById('root')
+	);
+</script>
+<script src="./refuse.umd.js"></script>
+<script>
+	const {render, fuse} = Refuse;
+	render(
+		() => fuse`
+			<div>
+				<h1>Hello, world!</h1>
+				<p>It's a beautiful day.</p>
+			</div>
+		`,
+		document.getElementById('root2')
+	);
+</script>
+</body>
+</html>

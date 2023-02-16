@@ -1,4 +1,6 @@
-import type {RefuseElement, Ref} from "../../src/index.mjs";
+import './style.css'
+
+import type {RefuseElement, Ref, RefuseComponent} from "refusejs";
 import {Fragment,
 	memo,
 	useMemo,
@@ -9,7 +11,7 @@ import {Fragment,
 	useRef,
 	fuse,
 	render,
-} from "../../src/index.mjs";
+} from "refusejs";
 // const testProps = {
 // 	[Symbol()]: true,
 // }
@@ -31,7 +33,7 @@ interface TestProps {
 	children: string[]
 }
 
-function Test(props: TestProps, ref: Ref<HTMLElement>): RefuseElement {
+const Test: RefuseComponent<TestProps> = (props, ref) => {
 
 	console.log('Test called with props:', props)
 
@@ -218,6 +220,7 @@ function App(): RefuseElement {
 function A(): RefuseElement {
 	console.log('A called')
 	const [count, setCount] = useState(0)
+
 	function whenToRender() {
 		console.log('when to executed?')
 		return count >= 5

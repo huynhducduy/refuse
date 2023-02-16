@@ -2,9 +2,9 @@
 import htm from '../node_modules/htm/src/index.mjs'
 // @ts-ignore
 import clone from './utils/rfdc.js'
-import isChildfulFiber from "./utils/isChildfulFiber.mjs";
-import isRefuseFiber from "./utils/isRefuseFiber.mjs";
-import {Ref} from "./hooks.mjs";
+import isChildfulFiber from "./utils/isChildfulFiber.js";
+import isRefuseFiber from "./utils/isRefuseFiber.js";
+import {Ref} from "./hooks.js";
 import './getEventListeners.js'
 
 //-----------------------------------------------------------------------------
@@ -51,7 +51,7 @@ export type Fiber = RefuseFiber | HtmlFiber | string | number | false | null | u
 
 export type RefuseElement = Fiber | Fiber[] | RefuseElement[]
 type Fuse = (strings: TemplateStringsArray, ...rest: any[]) => RefuseElement
-export type RefuseComponent = <T extends Props = Props>(props: T, ref?: Ref) => RefuseElement
+export type RefuseComponent<T extends Props = Props> = (props: T, ref?: Ref) => RefuseElement
 
 // Utility types
 
@@ -68,7 +68,12 @@ let batchUpdate: Function[] = []
 let unmountedFibers: RefuseFiber[] = []
 let batchUpdateTimer: {value: number | undefined} = {value: undefined}
 
-const originalConsoleLog = console.log
+let consoleLog = console.log
+if (ENV !== "development") {
+	// Disable log in production
+	consoleLog = (...args: any) => {}
+}
+const originalConsoleLog = consoleLog
 
 //-----------------------------------------------------------------------------
 
@@ -313,9 +318,9 @@ function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['chil
 				)
 			} else {
 				if (Array.isArray(child[i])) {
-					// console.log('---------array of fiber', clone(child[i]), clone(oldChild?.[i]))
+					// consoleLog('---------array of fiber', clone(child[i]), clone(oldChild?.[i]))
 				} else {
-					// console.log('---------html fiber', clone(child[i]), clone(oldChild?.[i]))
+					// consoleLog('---------html fiber', clone(child[i]), clone(oldChild?.[i]))
 				}
 
 				// Clean old child that not match with new child if there are any
@@ -349,7 +354,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 
 		if (oldFiber) {
 			if (oldFiber.type === fiber.type) {
-				// console.log('Reuse:', clone(oldFiber))
+				// consoleLog('Reuse:', clone(oldFiber))
 				isReuse = true
 				fiber.isDirty = oldFiber.isDirty
 			} else {
@@ -360,7 +365,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 		fiber.isDirty = parentFiberIsDirty || fiber.isDirty
 
 		if (fiber.isDirty) {
-			console.log(fiber.type.name, 'is dirty')
+			consoleLog(fiber.type.name, 'is dirty')
 
 			let newProps = fiber.props
 			const newRef = fiber.ref
@@ -394,9 +399,9 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 				fiber.renderProps = result.renderProps
 				fiber.child = result.child
 			}
-			console.log('Result:', fiber.type.name, clone(fiber)) // No child state
+			consoleLog('Result:', fiber.type.name, clone(fiber)) // No child state
 		} else {
-			console.log(fiber.type.name, 'is clean')
+			consoleLog(fiber.type.name, 'is clean')
 			if (isReuse) {
 				fiber = oldFiber as RefuseFiber // If isReuse then oldFiber is RefuseFiber
 			}
@@ -404,7 +409,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 	}
 
 	reconcileChild("isDirty" in fiber ? fiber.isDirty : false, oldChild, fiber.child, fiber.DOMNode!)
-	console.log('DONE: ', fiber.type.name, clone(fiber))
+	consoleLog('DONE: ', fiber.type.name, clone(fiber))
 	toDOMElement(fiber, oldChild)
 	fiber.isProcessed = true
 
@@ -476,23 +481,23 @@ function cleanUpEffects(fiber: Fiber) {
 }
 
 function rerender() {
-	console.log('----------------------------------------------------------------')
+	consoleLog('----------------------------------------------------------------')
 	// Batch update state changes
-	console.log('@@@@@@@ Batch updating...')
-	console.log = (...args) => originalConsoleLog('[State change]', ...args)
+	consoleLog('@@@@@@@ Batch updating...')
+	consoleLog = (...args) => originalConsoleLog('[State change]', ...args)
 
 	while (batchUpdate.length) {
 		batchUpdate.pop()!()
 	}
-	console.log = originalConsoleLog
+	consoleLog = originalConsoleLog
 
 	// Render phase, and schedule effects to run later
-	console.log('@@@@@@@ Rendering...')
-	// console.log = (...args) => originalConsoleLog('[Render]', ...args)
+	consoleLog('@@@@@@@ Rendering...')
+	// consoleLog = (...args) => originalConsoleLog('[Render]', ...args)
 	const newRootFiber= reconcile(undefined, rootFiber, createDefaultRefuseFiber(rootComponent))
 	resetFiber(newRootFiber) // Reset fiber to prepare for next render
-	console.log('Result:', newRootFiber)
-	// console.log = originalConsoleLog
+	consoleLog('Result:', newRootFiber)
+	// consoleLog = originalConsoleLog
 
 	// Reconciliation phase: tree diffing: find out what changed, what component to mount and to unmount
 	// https://reactjs.org/docs/reconciliation.html
@@ -517,26 +522,26 @@ function rerender() {
 		// Run effects and cleanup effects of unmounted components
 		// 1: if changes are made in layout effects: run before browser paint
 		// 2: if no changes are made in layout effects: run after browser painted to the screen
-		console.log('@@@@@@ Running effects...')
-		console.log = (...args) => originalConsoleLog('[Effect]', ...args)
+		consoleLog('@@@@@@ Running effects...')
+		consoleLog = (...args) => originalConsoleLog('[Effect]', ...args)
 		runEffects(rootFiber)
-		console.log = originalConsoleLog
+		consoleLog = originalConsoleLog
 
 		// Clean up unmounted components last
-		console.log('@@@@@@ Cleaning up unmounted components...')
-		console.log = (...args) => originalConsoleLog('[Effect cleanup]', ...args)
+		consoleLog('@@@@@@ Cleaning up unmounted components...')
+		consoleLog = (...args) => originalConsoleLog('[Effect cleanup]', ...args)
 		while (unmountedFibers.length) {
 			cleanUpEffects(unmountedFibers.pop()!)
 		}
-		console.log = originalConsoleLog
+		consoleLog = originalConsoleLog
 	}
 
 	requestAnimationFrame(function () {
 
-		console.log('@@@@@@ Running layout effects before repaint...')
-		console.log = (...args) => originalConsoleLog('[Layout effect]', ...args)
+		consoleLog('@@@@@@ Running layout effects before repaint...')
+		consoleLog = (...args) => originalConsoleLog('[Layout effect]', ...args)
 		runEffects(rootFiber, true)
-		console.log = originalConsoleLog
+		consoleLog = originalConsoleLog
 
 		if (batchUpdate.length) {
 			runEffectsFunc()
@@ -545,7 +550,7 @@ function rerender() {
 		} else {
 			channel.port1.onmessage = runEffectsFunc
 			channel.port2.postMessage(undefined) // Guarantee to postMessage after paint
-			console.log('@@@@@@ Browser painted to the screen')
+			consoleLog('@@@@@@ Browser painted to the screen')
 		}
 	})
 }

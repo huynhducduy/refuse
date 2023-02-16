@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "useDefineForClassFields": true,
     "module": "esnext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -12,11 +11,10 @@
     "esModuleInterop": true,
     "lib": ["es2015","esnext", "dom", "DOM.Iterable"],
     "types": [],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+	"noEmit": true,
   },
   "include": [
 	"src/**/*.ts",
-	"src/**/*.mts",
-    "demo/**/*.mts"
   ]
 }

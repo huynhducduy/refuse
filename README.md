@@ -1,10 +1,20 @@
-# Refuse
+# Refuse [![npm version](https://badge.fury.io/js/refusejs.svg)](https://badge.fury.io/js/refusejs)
 
-This is a work-in-progress, naive, hobby implementation of the React.js framework.
+![Refuse](https://user-images.githubusercontent.com/12293622/219362480-f01fec20-f405-44e4-af0f-10cfc5712c30.png)
+The name of `refuse` coming from the main action of it: `fuse` (join or blend) multiple components to form a single working app. Fun fact: it's also mean `trash`, or refer to the action of not willing to do something in English)
 
-![ezgif-5-ffd434224c](https://user-images.githubusercontent.com/12293622/178789425-b6115cb7-39b0-43a2-afa7-2fd0acef0ded.gif)
+> **Note**: This library is a work-in-progress. Some features are not available yet. See [Feature lists](#feature-lists) for more details.
+
+[![From Vietnam with <3](https://raw.githubusercontent.com/webuild-community/badge/master/svg/love.svg)](https://webuild.community) [![Built with WeBuild](https://raw.githubusercontent.com/webuild-community/badge/master/svg/WeBuild.svg)](https://webuild.community)
+
+Key points:
+- Same modern API as React.js
+- Full typescript support
+- No JSX
+- No build tool, no bundler, no transpiler required
 
 Different from React:
+- No class component supported
 - No longer need to return single root element, so `Fragment` use cases now narrow down to key-ed diff only.
 - Ref works on component as well, and auto assign to the root element of the component.
   - If the component have multiple root, it will point to the `DocumentFragment`, which will be empty (and useless) after moving its child to the DOM. [Read more](https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment#usage_notes)
@@ -12,16 +22,95 @@ Different from React:
 - Component can return `number[]`,`string[]`,`fuse[]` or even `string[][]` to render multiple elements.
   - Component can return `null`,`undefined`,`false` to skip rendering.
 
-Syntax Note:
+About syntax:
 - Spread props: `<div ...${props}>` instead of `<div {...props}>`
-- HTML's optional quotes: `<div class=foo>`
-- Component end-tags: `<${Foo}>bar<//>`
+- HTML's quotes now optional: `<div class=foo>`
+- Shorthand for component end-tags: `<${Foo}>bar<//>`
 - Comment: `<!-- comment -->`
 
-Syntax Highlighting:
+Syntax highlighting support:
+- Intellij IDEA (WebStorm,...): supported by default
 - VSCode: [lit-html](https://marketplace.visualstudio.com/items?itemName=bierner.lit-html)
 
-## Todo:
+> Have you ever wondered how React.js works internally? Reading the source code of `refuse` is a good way to learn how it works.
+
+## Try it out now
+
+## Getting started
+```
+npm i -S refusejs
+```
+
+```ts
+import {useState, fuse,render} from "refusejs"
+import type {RefuseComponent} from "refusejs"
+
+interface Props {
+  someThing: string
+}
+
+const Component: RefuseComponent<Props> = (props, ref) => {
+	const [state, setState] = useState(0)
+
+	useEffect(() => {
+		const timer = setInterval(() => setState(state + 1), 1000)
+		return () => clearInterval(timer)
+	}, [])
+
+	return fuse`
+		<div class=foo ...${props} foo=${state}>
+			${props.children}
+			<${A}>Something...<//>
+			<button onclick=${() => setState(state + 1)}>Click me</button>
+			${state > 300 && fuse`<div>
+				Yeah
+			</div>`}
+			<!-- some comment -->
+		</div>
+	`
+}
+
+render(Component, document.getElementById('root'))
+```
+
+Or
+
+```html
+<script src="https://unpkg.com/refusejs@latest/dist/refuse.umd.js"></script>
+<script>
+	const {render, fuse} = Refuse;
+	render(
+		() => fuse`
+			<div>
+				<h1>Hello, world!</h1>
+				<p>It's a beautiful day.</p>
+			</div>
+		`,
+		document.getElementById('root2')
+	);
+</script>
+```
+
+or
+
+```html
+<script type="module">
+	import * as Refuse from 'https://unpkg.com/refusejs@latest/dist/refuse.modern.js'; // Support only modern browsers
+	// import * as Refuse from 'https://unpkg.com/refusejs@latest/dist/refuse.module.js'; // Support all browsers
+
+	Refuse.render(
+		() => Refuse.fuse`
+			<div>
+				<h1>Hello, world!</h1>
+				<p>It's a beautiful day.</p>
+			</div>
+		`,
+		document.getElementById('root')
+	);
+</script>
+```
+
+## Feature lists:
 - [x] TypeScript
 - [x] Jsx to HyperScript using `htm`
 - [x] render
@@ -69,13 +158,19 @@ Syntax Highlighting:
 - [ ] useEvent
 
 ## Development
+Watch `refuse` package
 ```
-npm i
-tsc --watch
+npm i --lockfile-only
+npm link
+npm run dev
 ```
 
-Open `index.html` in browser
+Run `example1`
+```
+cd demo/example1
+npm i --lockfile-only
+npm link refuse
+npm run dev
+```
 
-### Personal note
-- https://github.com/developit/htm/tree/master/packages/babel-plugin-htm
-- https://github.com/developit/htm/tree/master/packages/babel-plugin-transform-jsx-to-htm
+And follow instructions.
