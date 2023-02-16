@@ -44,6 +44,7 @@ Syntax Highlighting:
 - [x] JSX Embedding Expression
 - [x] DOM Ref
 - [x] React.forwardRef
+- [ ] Render multiple Refuse instances
 - [ ] Error Boundary
 - [ ] Concurrent Mode, useTransition
 - [ ] useContext

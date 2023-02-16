@@ -1,4 +1,5 @@
-import {RefuseComponent, currentFiber, batchUpdate, batchUpdateTimer, rerender, ComponentProps, ComponentRef, RefuseFiber} from "./render.mjs";
+import type {RefuseComponent, ComponentProps, ComponentRef, RefuseFiber} from "./render.mjs";
+import {currentFiber, batchUpdate, batchUpdateTimer, rerender} from "./render.mjs";
 
 export function useState<T = Exclude<unknown, Function>>(initialValue: T): [T, (newValue: T | ((prevState: T) => T)) => void] {
 	const thisFiber = currentFiber // because currentFiber change overtime, we must preserve it inside useState

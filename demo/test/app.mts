@@ -1,4 +1,4 @@
-import type {RefuseElement, Ref} from "./src/index.mjs";
+import type {RefuseElement, Ref} from "../../src/index.mjs";
 import {Fragment,
 	memo,
 	useMemo,
@@ -9,7 +9,7 @@ import {Fragment,
 	useRef,
 	fuse,
 	render,
-} from "./src/index.mjs";
+} from "../../src/index.mjs";
 // const testProps = {
 // 	[Symbol()]: true,
 // }

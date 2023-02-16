@@ -1,10 +1,9 @@
 // @ts-ignore
 import htm from '../node_modules/htm/src/index.mjs'
 // @ts-ignore
-import morphdom from '../node_modules/morphdom/dist/morphdom-esm.js'
-// @ts-ignore
-import clone from './rfdc.js'
-import {isChildfulFiber, isRefuseFiber} from "./utils.mjs";
+import clone from './utils/rfdc.js'
+import isChildfulFiber from "./utils/isChildfulFiber.mjs";
+import isRefuseFiber from "./utils/isRefuseFiber.mjs";
 import {Ref} from "./hooks.mjs";
 import './getEventListeners.js'
 
@@ -350,7 +349,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 
 		if (oldFiber) {
 			if (oldFiber.type === fiber.type) {
-				console.log('Reuse:', clone(oldFiber))
+				// console.log('Reuse:', clone(oldFiber))
 				isReuse = true
 				fiber.isDirty = oldFiber.isDirty
 			} else {
