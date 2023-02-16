@@ -35,6 +35,10 @@ Syntax highlighting support:
 
 ## Try it out now
 
+[With Vite](https://codesandbox.io/p/sandbox/refuse-vite-beb3gc)
+
+[Without bundler](https://codepen.io/huynhducduy/pen/wvEBNPo)
+
 ## Getting started
 ```
 npm i -S refusejs
