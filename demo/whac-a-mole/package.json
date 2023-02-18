@@ -1,0 +1,23 @@
+{
+  "name": "whac-a-mole",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "author": "Huynh Duc Duy",
+  "license": "ISC",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5",
+    "vite": "^4.1.2"
+  },
+  "dependencies": {
+    "gsap": "^3.11.4",
+    "refusejs": "file:../.."
+  }
+}

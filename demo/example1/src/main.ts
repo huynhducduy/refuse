@@ -116,7 +116,7 @@ function SomeChildren({count}: {count: number}): RefuseElement {
 		count,
 		undefined,
 		null,
-		false, ['heheh',
+		false, [' heheh',
 			fuse`<div>ola</div>`,
 			fuse`<${C}/>`,
 			'ahaha'
@@ -266,8 +266,8 @@ function C(): RefuseElement {
 }
 
 const App2 = (): RefuseElement => [
-	// fuse`<${App}/>`,
-	fuse`<${A}/>`
+	fuse`<${App}/>`,
+	// fuse`<${A}/>`
 ];
 
 render(App2, document.getElementById("root"))
