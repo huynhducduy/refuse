@@ -17,7 +17,6 @@ export function useState<T = Exclude<unknown, Function>>(initialValue: T): [T, (
 			}
 
 			if (thisFiber.state[thisIndex] !== newState) {
-				console.log('Update from', thisFiber.state[thisIndex], 'to', newState, 'in', thisFiber.type.name)
 				thisFiber.state[thisIndex] = newState
 				thisFiber.isDirty = true
 			}

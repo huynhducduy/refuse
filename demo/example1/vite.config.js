@@ -1,5 +1,5 @@
 export default {
 	optimizeDeps: {
-		exclude: ['refuse'],
+		exclude: ['refusejs'],
 	},
 }

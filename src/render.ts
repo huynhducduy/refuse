@@ -1,7 +1,6 @@
 // @ts-ignore
 import htm from '../node_modules/htm/src/index.mjs'
 // @ts-ignore
-import clone from './utils/rfdc.js'
 import isChildfulFiber from "./utils/isChildfulFiber.js";
 import isRefuseFiber from "./utils/isRefuseFiber.js";
 import {Ref} from "./hooks.js";
@@ -13,9 +12,11 @@ interface HtmlFiber {
 	// Data that use to create DOM element
 	renderType?: string
 	renderProps: Props
-	child: Fiber[]
+	child: RefuseElement[]
 	ref?: Ref
 	DOMNode?: Element | DocumentFragment
+	isDOMNodeReusable?: boolean
+	DOMNodeChildIndexDiff? : number
 }
 
 export interface RefuseFiber extends HtmlFiber {
@@ -49,7 +50,7 @@ interface Props {
 
 export type Fiber = RefuseFiber | HtmlFiber | string | number | false | null | undefined
 
-export type RefuseElement = Fiber | Fiber[] | RefuseElement[]
+export type RefuseElement = Fiber | RefuseElement[]
 type Fuse = (strings: TemplateStringsArray, ...rest: any[]) => RefuseElement
 export type RefuseComponent<T extends Props = Props> = (props: T, ref?: Ref) => RefuseElement
 
@@ -149,13 +150,11 @@ function createElement(type: any, props: any, ...child: any[]): Fiber {
 
 const fuse: Fuse = htm.bind(createElement)
 
-function markAsUnmounted(fiber: Fiber | string | number) {
-	if (typeof fiber !== 'number' && typeof fiber !== 'string' && isRefuseFiber(fiber)) {
-		unmountedFibers.push(fiber)
-	}
+function markAsUnmounted(fiber: RefuseFiber) {
+	unmountedFibers.push(fiber)
 }
 
-function* getNextRefuseFiberInChild(fiber: Fiber): Generator<[RefuseFiber['child'], number]> {
+function* getNextRefuseFiberInChild(fiber: RefuseElement): Generator<[RefuseFiber['child'], number]> {
 	if (Array.isArray(fiber)) {
 		for (const i in fiber) {
 			if (isRefuseFiber(fiber[i])) {
@@ -180,110 +179,134 @@ function* getNextRefuseFiberInChild(fiber: Fiber): Generator<[RefuseFiber['child
 	}
 }
 
-function addComponentToElement(fiber: Fiber, oldFiber: Fiber, element: Element | DocumentFragment) {
+function addComponentToElement(fiber: RefuseElement, fiberIndex: number, oldChild: RefuseElement[] | undefined, parentFiber: Exclude<HtmlFiber, undefined>) {
 	if (Array.isArray(fiber)) {
+		parentFiber.DOMNodeChildIndexDiff! += fiber.length -1
 		fiber.forEach((c, i) => {
 			let oldFiberChild
-			if (typeof oldFiber !== "string" && typeof oldFiber !== "number" && oldFiber && oldFiber.DOMNode) {
-				if (Array.isArray(oldFiber)) {
-					oldFiberChild = oldFiber[i]
+			if (oldChild && oldChild[fiberIndex] && typeof oldChild[fiberIndex] !== "string" && typeof oldChild[fiberIndex] !== "number") {
+				if (Array.isArray(oldChild[fiberIndex])) {
+					oldFiberChild = oldChild[fiberIndex]
 				} else {
-					oldFiberChild = oldFiber.child[i]
+					// @ts-expect-error we already check but typescript still complain
+					oldFiberChild = oldChild[fiberIndex].child
 				}
 			}
-			addComponentToElement(c, oldFiberChild, element)
+			addComponentToElement(c, i, oldFiberChild, parentFiber)
 		})
 	} else {
 		if (fiber !== false && fiber !== null && fiber !== undefined) {
 			if (fiber && typeof fiber !== "string" && typeof fiber !== "number") {
 				if (!isRefuseFiber(fiber)) { // If this is a refuse fiber, we already process it
-					let oldChild
-					if (typeof oldFiber !== "string" && typeof oldFiber !== "number" && oldFiber && oldFiber.DOMNode) {
-						fiber.DOMNode = oldFiber.DOMNode
-						oldChild = oldFiber.child
+					let newOldChild
+					// @ts-expect-error we already check but typescript still complain
+					if (oldChild && oldChild[fiberIndex] && typeof oldChild[fiberIndex] !== "string" && typeof oldChild[fiberIndex] !== "number" && oldChild[fiberIndex].DOMNode) {
+						// @ts-expect-error we already check but typescript still complain
+						fiber.DOMNode = oldChild[fiberIndex].DOMNode
+						// @ts-expect-error we already check but typescript still complain
+						newOldChild = oldChild[fiberIndex].child
 					}
-					toDOMElement(fiber, oldChild)
+					toDOMElement(fiber, newOldChild)
 				}
-				element.appendChild(fiber.DOMNode!)
+				const diffToAdd = fiber.DOMNode instanceof DocumentFragment ? fiber.DOMNode.childNodes.length - 1 : 0
+				if (!parentFiber.isDOMNodeReusable) {
+					parentFiber.DOMNode!.appendChild(fiber.DOMNode!)
+				} else {
+					// There are cases when paraentFiber contans may fragment, so when nodes in these fragments reused, they will ve moving around and parentFiber DOMNode no longer contain these nodes.
+					if (parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!]) {
+						parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(fiber.DOMNode!)
+					} else {
+						parentFiber.DOMNode!.appendChild(fiber.DOMNode!)
+					}
+				}
+				parentFiber.DOMNodeChildIndexDiff! += diffToAdd
 			} else {
-				element.appendChild(document.createTextNode(String(fiber)))
+				if (!parentFiber.isDOMNodeReusable) {
+					parentFiber.DOMNode!.appendChild(document.createTextNode(String(fiber)))
+				} else {
+					parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(String(fiber))
+				}
 			}
+		} else {
+			// Decrease diff when there are falsy value => dont get rendered
+			parentFiber.DOMNodeChildIndexDiff! -= 1
 		}
 	}
 }
 
 function toDOMElement(fiber: HtmlFiber | RefuseFiber, oldChild: HtmlFiber['child'] | undefined) {
 
-	if ("isProcessed" in fiber && fiber.isProcessed) {
-		return
-	} else {
+	if ("isProcessed" in fiber && fiber.isProcessed) return
 
-		let element: Element | DocumentFragment = new DocumentFragment()
+	let element: Element | DocumentFragment = new DocumentFragment()
+	fiber.isDOMNodeReusable = false
 
-		if (fiber.renderType !== undefined) {
+	if (fiber.renderType !== undefined) {
 
-			let attributes: Record<string, any> = {},
-				events: Record<string, any> = {}
+		let attributes: Record<string, any> = {},
+			events: Record<string, any> = {}
 
-			for (let key in fiber.renderProps) {
-				if (![null, undefined, false].includes(fiber.renderProps[key])) {
-					if (typeof fiber.renderProps[key] !== "function") {
-						attributes[key] = fiber.renderProps[key]
-					} else {
-						events[key.slice(2)] = fiber.renderProps[key] // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
-					}
+		for (let key in fiber.renderProps) {
+			if (![null, undefined, false].includes(fiber.renderProps[key])) {
+				if (typeof fiber.renderProps[key] !== "function") {
+					attributes[key] = fiber.renderProps[key]
+				} else {
+					events[key.slice(2)] = fiber.renderProps[key] // remove first 2 characters of attribute name (which is "on") to make it a valid event name then add it to the element
 				}
-			}
-
-			if (fiber?.DOMNode && fiber.DOMNode instanceof Element && fiber.DOMNode.tagName.toLowerCase() === fiber.renderType) {
-				// Reuse oldFiber.DOMNode
-				element = fiber.DOMNode
-
-				for (const attr of fiber.DOMNode.attributes) {
-					if (!(attr.name in attributes)) {
-						element.removeAttribute(attr.name)
-					}
-				}
-
-				// @ts-ignore
-				const oldEvents: Record<string, any[]> = element.getEventListeners()
-
-				for (const eventName in oldEvents) {
-					oldEvents[eventName].forEach(event => {
-						element.removeEventListener(eventName, event.listener)
-					})
-				}
-
-				while (element.firstChild) {
-					element.removeChild(element.firstChild);
-				}
-
-			} else {
-				// Init new DOMNode
-				element = document.createElement(fiber.renderType)
-			}
-
-			for (let key in attributes) {
-				element.setAttribute(key, attributes[key])
-			}
-
-			for (let key in events) {
-				element.addEventListener(key, events[key])
-			}
-
-			if (fiber?.ref) {
-				fiber.ref.current = element
 			}
 		}
 
-		fiber.DOMNode = element
+		if (fiber?.DOMNode && fiber.DOMNode instanceof Element && fiber.DOMNode.tagName.toLowerCase() === fiber.renderType) {
+			// Reuse oldFiber.DOMNode
+			element = fiber.DOMNode
+
+			for (const attr of fiber.DOMNode.attributes) {
+				if (!(attr.name in attributes)) {
+					element.removeAttribute(attr.name)
+				}
+			}
+
+			// @ts-ignore
+			const oldEvents: Record<string, any[]> = element.getEventListeners()
+
+			for (const eventName in oldEvents) {
+				oldEvents[eventName].forEach(event => {
+					element.removeEventListener(eventName, event.listener)
+				})
+			}
+
+			fiber.isDOMNodeReusable = true
+		} else {
+			// Init new DOMNode
+			element = document.createElement(fiber.renderType)
+		}
+
+		for (let key in attributes) {
+			element.setAttribute(key, attributes[key])
+		}
+
+		for (let key in events) {
+			element.addEventListener(key, events[key])
+		}
+
+		if (fiber?.ref) {
+			fiber.ref.current = element
+		}
 	}
 
+	fiber.DOMNode = element
+	fiber.DOMNodeChildIndexDiff = 0
 	fiber.child.forEach((child, index) => {
-		addComponentToElement(child, oldChild?.[index], fiber.DOMNode!)
+		addComponentToElement(child, index, oldChild, fiber)
 	})
-}
 
+	// Remove unused DOMNode
+	let diff = fiber.DOMNode.childNodes.length - fiber.child.length - fiber.DOMNodeChildIndexDiff
+	while (diff > 0) {
+		fiber.DOMNode.removeChild(fiber.DOMNode.lastChild!)
+		diff--
+	}
+}
 
 function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['child'] | undefined, child: RefuseFiber['child'], DOMNode: Exclude<RefuseFiber['DOMNode'], undefined>) {
 	// TODO: match key-ed child
@@ -304,7 +327,7 @@ function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['chil
 
 				// Clean old child that not match with new child if there are any
 				for (const j of nextOldChild) {
-					markAsUnmounted(j[0][j[1]])
+					markAsUnmounted(j[0][j[1]] as RefuseFiber)
 				}
 			}
 
@@ -322,21 +345,11 @@ function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['chil
 				} else {
 					// consoleLog('---------html fiber', clone(child[i]), clone(oldChild?.[i]))
 				}
-
-				// Clean old child that not match with new child if there are any
-				if (isRefuseFiber(oldChild?.[i])) {
-					markAsUnmounted(oldChild?.[i])
-				}
-
 			}
 		} else {
 			// child[i] is number or string
 
 			if (oldChild?.[i] !== child[i]) {
-				// Clean old child that not match with new child if there are any
-				if (isRefuseFiber(oldChild?.[i])) {
-					markAsUnmounted(oldChild?.[i])
-				}
 			}
 		}
 	}
@@ -354,7 +367,6 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 
 		if (oldFiber) {
 			if (oldFiber.type === fiber.type) {
-				// consoleLog('Reuse:', clone(oldFiber))
 				isReuse = true
 				fiber.isDirty = oldFiber.isDirty
 			} else {
@@ -365,8 +377,6 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 		fiber.isDirty = parentFiberIsDirty || fiber.isDirty
 
 		if (fiber.isDirty) {
-			consoleLog(fiber.type.name, 'is dirty')
-
 			let newProps = fiber.props
 			const newRef = fiber.ref
 
@@ -399,9 +409,7 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 				fiber.renderProps = result.renderProps
 				fiber.child = result.child
 			}
-			consoleLog('Result:', fiber.type.name, clone(fiber)) // No child state
 		} else {
-			consoleLog(fiber.type.name, 'is clean')
 			if (isReuse) {
 				fiber = oldFiber as RefuseFiber // If isReuse then oldFiber is RefuseFiber
 			}
@@ -409,14 +417,13 @@ function reconcile(parentFiberIsDirty: boolean | undefined, oldFiber: RefuseFibe
 	}
 
 	reconcileChild("isDirty" in fiber ? fiber.isDirty : false, oldChild, fiber.child, fiber.DOMNode!)
-	consoleLog('DONE: ', fiber.type.name, clone(fiber))
 	toDOMElement(fiber, oldChild)
 	fiber.isProcessed = true
 
 	return fiber
 }
 
-function resetFiber(fiber: Fiber | Fiber[]) {
+function resetFiber(fiber: RefuseElement) {
 	if (typeof fiber === "object" && fiber) {
 		if (!Array.isArray(fiber)) {
 			if (isRefuseFiber(fiber)) {
@@ -438,9 +445,14 @@ function resetFiber(fiber: Fiber | Fiber[]) {
 	}
 }
 
-function runEffects(fiber: Fiber, isLayout = false) {
+function runEffects(fiber: RefuseElement, isLayout = false) {
 	// Called in a bottom-up fashion, run children's effects first
 	if (typeof fiber === "string" || typeof fiber === "number" || !fiber) return
+
+	if (Array.isArray(fiber)) {
+		fiber.forEach(f => runEffects(f, isLayout))
+		return
+	}
 
 	fiber.child.forEach(child => {
 		if (Array.isArray(child)) {
@@ -461,9 +473,14 @@ function runEffects(fiber: Fiber, isLayout = false) {
 	}
 }
 
-function cleanUpEffects(fiber: Fiber) {
+function cleanUpEffects(fiber: RefuseElement) {
 	// Called in a bottom-up fashion, run children's effects first
 	if (typeof fiber === "string" || typeof fiber === "number" || !fiber) return
+
+	if (Array.isArray(fiber)) {
+		fiber.forEach(f => cleanUpEffects(f))
+		return
+	}
 
 	fiber.child.forEach(child => {
 		if (Array.isArray(child)) {

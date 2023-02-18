@@ -172,7 +172,7 @@ Run `example1`
 ```
 cd demo/example1
 npm i --lockfile-only
-npm link refuse
+npm link refusejs
 npm run dev
 ```
 

@@ -1,6 +1,6 @@
 import './style.css'
 
-import type {RefuseElement, Ref, RefuseComponent} from "refusejs";
+import type {RefuseElement, RefuseComponent} from "refusejs";
 import {Fragment,
 	memo,
 	useMemo,
@@ -221,11 +221,6 @@ function A(): RefuseElement {
 	console.log('A called')
 	const [count, setCount] = useState(0)
 
-	function whenToRender() {
-		console.log('when to executed?')
-		return count >= 5
-	}
-
 	return fuse`
 		<a>A ${count}</a>
 		<input count=${count}/>
@@ -271,7 +266,7 @@ function C(): RefuseElement {
 }
 
 const App2 = (): RefuseElement => [
-	fuse`<${App}/>`,
+	// fuse`<${App}/>`,
 	fuse`<${A}/>`
 ];
 
