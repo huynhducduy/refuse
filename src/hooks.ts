@@ -8,7 +8,7 @@ export function useState<T = Exclude<unknown, Function>>(initialValue: T): [T, (
 	thisFiber.state[thisIndex] ??= initialValue
 
 	function setState(newState:  T | ((prevState: T) => T)) {
-		if (!batchUpdate.length) batchUpdateTimer.value = setTimeout(rerender, 0)
+		if (!batchUpdate.length) requestAnimationFrame(rerender)
 
 		batchUpdate.push(function() {
 

@@ -181,7 +181,7 @@ function* getNextRefuseFiberInChild(fiber: RefuseElement): Generator<[RefuseFibe
 
 function addComponentToElement(fiber: RefuseElement, fiberIndex: number, oldChild: RefuseElement[] | undefined, parentFiber: Exclude<HtmlFiber, undefined>) {
 	if (Array.isArray(fiber)) {
-		parentFiber.DOMNodeChildIndexDiff! += fiber.length -1
+		// parentFiber.DOMNodeChildIndexDiff! += fiber.length -1
 		fiber.forEach((c, i) => {
 			let oldFiberChild
 			if (oldChild && oldChild[fiberIndex] && typeof oldChild[fiberIndex] !== "string" && typeof oldChild[fiberIndex] !== "number") {
@@ -208,28 +208,28 @@ function addComponentToElement(fiber: RefuseElement, fiberIndex: number, oldChil
 					}
 					toDOMElement(fiber, newOldChild)
 				}
-				const diffToAdd = fiber.DOMNode instanceof DocumentFragment ? fiber.DOMNode.childNodes.length - 1 : 0
-				if (!parentFiber.isDOMNodeReusable) {
+				// const diffToAdd = fiber.DOMNode instanceof DocumentFragment ? fiber.DOMNode.childNodes.length - 1 : 0
+				// if (!parentFiber.isDOMNodeReusable ||
+				// 	!parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!] // There are cases when paraentFiber contans may fragment, so when nodes in these fragments reused, they will ve moving around and parentFiber DOMNode no longer contain these nodes.
+				// ) {
 					parentFiber.DOMNode!.appendChild(fiber.DOMNode!)
-				} else {
-					// There are cases when paraentFiber contans may fragment, so when nodes in these fragments reused, they will ve moving around and parentFiber DOMNode no longer contain these nodes.
-					if (parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!]) {
-						parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(fiber.DOMNode!)
-					} else {
-						parentFiber.DOMNode!.appendChild(fiber.DOMNode!)
-					}
-				}
-				parentFiber.DOMNodeChildIndexDiff! += diffToAdd
+				// } else {
+				// 	parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(fiber.DOMNode!)
+				// }
+				// parentFiber.DOMNodeChildIndexDiff! += diffToAdd
+				// console.log('+', diffToAdd)
 			} else {
-				if (!parentFiber.isDOMNodeReusable) {
+				// if (!parentFiber.isDOMNodeReusable ||
+				// 	!parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!]
+				// ) {
 					parentFiber.DOMNode!.appendChild(document.createTextNode(String(fiber)))
-				} else {
-					parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(String(fiber))
-				}
+				// } else {
+				// 	parentFiber.DOMNode!.childNodes[fiberIndex + parentFiber.DOMNodeChildIndexDiff!].replaceWith(String(fiber))
+				// }
 			}
 		} else {
 			// Decrease diff when there are falsy value => dont get rendered
-			parentFiber.DOMNodeChildIndexDiff! -= 1
+			// parentFiber.DOMNodeChildIndexDiff! -= 1
 		}
 	}
 }
@@ -260,11 +260,11 @@ function toDOMElement(fiber: HtmlFiber | RefuseFiber, oldChild: HtmlFiber['child
 			// Reuse oldFiber.DOMNode
 			element = fiber.DOMNode
 
-			for (const attr of fiber.DOMNode.attributes) {
-				if (!(attr.name in attributes)) {
-					element.removeAttribute(attr.name)
-				}
-			}
+			// for (const attr of fiber.DOMNode.attributes) {
+			// 	if (!(attr.name in attributes)) {
+			// 		element.removeAttribute(attr.name)
+			// 	}
+			// }
 
 			// @ts-ignore
 			const oldEvents: Record<string, any[]> = element.getEventListeners()
@@ -273,6 +273,10 @@ function toDOMElement(fiber: HtmlFiber | RefuseFiber, oldChild: HtmlFiber['child
 				oldEvents[eventName].forEach(event => {
 					element.removeEventListener(eventName, event.listener)
 				})
+			}
+
+			while (element.firstChild) {
+				element.removeChild(element.firstChild)
 			}
 
 			fiber.isDOMNodeReusable = true
@@ -296,16 +300,17 @@ function toDOMElement(fiber: HtmlFiber | RefuseFiber, oldChild: HtmlFiber['child
 
 	fiber.DOMNode = element
 	fiber.DOMNodeChildIndexDiff = 0
+
 	fiber.child.forEach((child, index) => {
 		addComponentToElement(child, index, oldChild, fiber)
 	})
 
 	// Remove unused DOMNode
-	let diff = fiber.DOMNode.childNodes.length - fiber.child.length - fiber.DOMNodeChildIndexDiff
-	while (diff > 0) {
-		fiber.DOMNode.removeChild(fiber.DOMNode.lastChild!)
-		diff--
-	}
+	// let diff = fiber.DOMNode.childNodes.length - fiber.child.length - fiber.DOMNodeChildIndexDiff
+	// while (diff > 0) {
+	// 	fiber.DOMNode.removeChild(fiber.DOMNode.lastChild!)
+	// 	diff--
+	// }
 }
 
 function reconcileChild(parentFiberIsDirty: boolean, oldChild: RefuseFiber['child'] | undefined, child: RefuseFiber['child'], DOMNode: Exclude<RefuseFiber['DOMNode'], undefined>) {
