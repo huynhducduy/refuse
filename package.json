@@ -13,6 +13,9 @@
   },
   "homepage": "https://github.com/huynhducduy/refuse#readme",
   "type": "module",
+  "files": [
+	"dist"
+  ],
   "source": "src/index.ts",
   "exports": {
     "types": "./dist/index.d.ts",
