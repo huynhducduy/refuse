@@ -35,6 +35,10 @@ Syntax highlighting support:
 
 ## Try it out now
 
+[![Whac-a-mole with Refuse](https://user-images.githubusercontent.com/12293622/219870837-306fd0ae-479c-442f-a402-325a7d2f72bd.png)](https://codepen.io/huynhducduy/pen/VwGvjbv)
+
+[Whac-a-mole with Refuse](https://codepen.io/huynhducduy/pen/VwGvjbv)
+
 [With Vite](https://codesandbox.io/p/sandbox/refuse-vite-beb3gc)
 
 [Without bundler](https://codepen.io/huynhducduy/pen/wvEBNPo)
