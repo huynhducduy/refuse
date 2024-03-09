@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "typescript": "^4.9.5",
-    "vite": "^4.1.2"
+    "vite": "^4.1.5"
   },
   "dependencies": {
     "gsap": "^3.11.4",
